@@ -1,0 +1,825 @@
+<title>Treino Adaptativo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: app de uma coluna com abas fixas; cartões só onde agrupam uma ação ou um bloco do plano */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --surface-2: #e8ecf2;
+  --line: #d3d9e3;
+  --fg: #141a24;
+  --fg-2: #4a5568;
+  --muted: #6b7686;
+  --accent: #2554c7;
+  --accent-soft: #dbe5fb;
+  --on-accent: #ffffff;
+  --good: #1d7a4a;
+  --warn: #a35d00;
+  --bad: #b42318;
+  --good-soft: #dcf2e4;
+  --warn-soft: #fbecd4;
+  --bad-soft: #fbe1de;
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f131a; --surface: #171c25; --surface-2: #212836; --line: #2d3545;
+    --fg: #e8ecf3; --fg-2: #b3bccb; --muted: #8a94a6;
+    --accent: #7ea2ff; --accent-soft: #1f2c4d; --on-accent: #0b1226;
+    --good: #5cc98d; --warn: #f0a742; --bad: #ff8a7a;
+    --good-soft: #15301f; --warn-soft: #36270f; --bad-soft: #3a1916;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f131a; --surface: #171c25; --surface-2: #212836; --line: #2d3545;
+  --fg: #e8ecf3; --fg-2: #b3bccb; --muted: #8a94a6;
+  --accent: #7ea2ff; --accent-soft: #1f2c4d; --on-accent: #0b1226;
+  --good: #5cc98d; --warn: #f0a742; --bad: #ff8a7a;
+  --good-soft: #15301f; --warn-soft: #36270f; --bad-soft: #3a1916;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 760px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 48px; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 14px 0; border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1, h2, h3 { font-family: var(--font-display); letter-spacing: .01em; text-wrap: balance; margin: 0; line-height: 1.1; }
+h1 { font-size: 30px; text-transform: uppercase; }
+h2 { font-size: 24px; text-transform: uppercase; }
+h3 { font-size: 19px; }
+.block-tag { font-family: var(--font-mono); font-size: 12px; color: var(--fg-2); }
+nav.tabs { display: flex; gap: 4px; margin-top: 10px; overflow-x: auto; }
+nav.tabs button { flex: 1 0 auto; background: none; border: 0; border-bottom: 3px solid transparent; padding: 8px 6px; font: 600 13.5px var(--font-body); color: var(--muted); cursor: pointer; }
+nav.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+nav.tabs button:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+main { display: grid; gap: 20px; padding-top: 20px; }
+section.view { display: grid; gap: 18px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+.mono, .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.banner { padding: 12px 14px; border-radius: 8px; background: var(--warn-soft); color: var(--fg); font-size: 14px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 2px; }
+.stat .v { font: 700 28px var(--font-display); }
+.stat .v small { font: 500 13px var(--font-body); color: var(--muted); }
+.meter { height: 8px; background: var(--accent-soft); border-radius: 4px; overflow: hidden; }
+.meter > span { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.meter.ok > span { background: var(--good); }
+/* plano */
+.days { display: flex; gap: 6px; flex-wrap: wrap; }
+.days button { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 6px 14px; font: 600 14px var(--font-body); cursor: pointer; }
+.days button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.ex { display: grid; grid-template-columns: 28px 1fr auto; gap: 4px 12px; align-items: baseline; padding: 10px 0; border-top: 1px solid var(--line); }
+.ex:first-of-type { border-top: 0; }
+.ex .n { font: 700 18px var(--font-display); color: var(--muted); }
+.ex .name { font-weight: 600; }
+.ex .scheme { font-family: var(--font-mono); font-size: 13px; text-align: right; white-space: nowrap; }
+.ex .meta { grid-column: 2 / 4; font-size: 13px; color: var(--muted); }
+.phase { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.phase span { height: 6px; border-radius: 3px; background: var(--surface-2); }
+.phase span.on { background: var(--accent); }
+.phase span.done { background: var(--accent-soft); }
+/* forms */
+form { display: grid; gap: 12px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field label { font-size: 13px; font-weight: 600; color: var(--fg-2); }
+input, select, textarea { width: 100%; font: 15px var(--font-body); padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); }
+input[type="range"] { padding: 0; accent-color: var(--accent); }
+.btn { border: 0; background: var(--accent); color: var(--on-accent); font: 600 15px var(--font-body); padding: 11px 16px; border-radius: 8px; cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+.btn.danger { background: transparent; color: var(--bad); border: 1px solid var(--line); padding: 6px 10px; font-size: 13px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.toast { font-size: 14px; color: var(--good); min-height: 1.5em; }
+/* histórico */
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+td.num, th.num { text-align: right; }
+/* ajustes */
+.adj { display: grid; gap: 8px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+.pill.up { background: var(--warn-soft); color: var(--warn); }
+.pill.down { background: var(--accent-soft); color: var(--accent); }
+.pill.ok { background: var(--good-soft); color: var(--good); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.msg { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; font-size: 14px; }
+.weekhead { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+/* charts */
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { fill: var(--muted); font: 10px var(--font-mono); }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .bar { fill: var(--accent); }
+.chart .bar.ok { fill: var(--good); }
+.chart .target { stroke: var(--fg-2); stroke-width: 2; }
+.chart .wline { stroke: var(--accent); stroke-width: 2; fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.chart .wdot { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+.chart .goal { stroke: var(--good); stroke-width: 1.5; stroke-dasharray: 0; }
+.chart .hit { fill: transparent; cursor: pointer; }
+.tip { position: absolute; pointer-events: none; background: var(--fg); color: var(--bg); font-size: 12px; padding: 6px 8px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -110%); }
+.key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--fg-2); }
+.key i { display: inline-block; width: 14px; height: 2px; background: var(--fg-2); vertical-align: middle; margin-right: 6px; }
+.key i.sw { height: 10px; width: 10px; border-radius: 2px; background: var(--accent); }
+.key i.sw.ok { background: var(--good); }
+.key i.g { background: var(--good); }
+details summary { cursor: pointer; font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) { .meter > span { transition: width .4s ease; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Treino Adaptativo</h1>
+      <span class="block-tag" id="blockTag">—</span>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" id="tab-treino" data-view="treino" aria-selected="true">Treino</button>
+      <button role="tab" id="tab-registrar" data-view="registrar" aria-selected="false">Registrar</button>
+      <button role="tab" id="tab-progresso" data-view="progresso" aria-selected="false">Progresso</button>
+      <button role="tab" id="tab-ajustes" data-view="ajustes" aria-selected="false">Ajustes</button>
+      <button role="tab" id="tab-perfil" data-view="perfil" aria-selected="false">Perfil</button>
+    </nav>
+  </header>
+
+  <main>
+    <div class="banner" id="exampleBanner" hidden>Este é um plano de exemplo. Preencha seu <a href="#perfil" data-go="perfil">perfil</a> para gerar o seu.</div>
+    <div class="banner" id="storeBanner" hidden></div>
+
+    <!-- TREINO -->
+    <section class="view" id="view-treino">
+      <div class="stats" id="weekStats"></div>
+      <div class="card">
+        <div class="weekhead">
+          <div>
+            <div class="label" id="phaseLabel">Bloco</div>
+            <h2 id="phaseTitle">—</h2>
+          </div>
+          <span class="small muted" id="nextSwap"></span>
+        </div>
+        <div class="phase" id="phaseBar"><span></span><span></span><span></span></div>
+        <p class="small" id="phaseNote" style="margin:0"></p>
+      </div>
+      <div class="days" id="dayPicker"></div>
+      <div class="card" id="dayCard"></div>
+    </section>
+
+    <!-- REGISTRAR -->
+    <section class="view" id="view-registrar" hidden>
+      <div class="card">
+        <h2>Registrar treino</h2>
+        <form id="logForm">
+          <div class="grid2">
+            <div class="field"><label for="lDate">Data</label><input type="date" id="lDate" required></div>
+            <div class="field"><label for="lDay">Treino feito</label><select id="lDay"></select></div>
+            <div class="field"><label for="lKcal">Kcal gastas</label><input type="number" id="lKcal" min="0" max="5000" inputmode="numeric" required placeholder="ex.: 420"></div>
+            <div class="field"><label for="lMin">Tempo (min)</label><input type="number" id="lMin" min="1" max="600" inputmode="numeric" required placeholder="ex.: 65"></div>
+            <div class="field"><label for="lWeight">Peso hoje (kg, opcional)</label><input type="number" id="lWeight" step="0.1" min="30" max="300" inputmode="decimal"></div>
+            <div class="field"><label for="lRpe">Esforço percebido: <span id="rpeVal">7</span>/10</label><input type="range" id="lRpe" min="1" max="10" value="7"></div>
+          </div>
+          <div class="field"><label for="lNote">Observação (opcional)</label><input type="text" id="lNote" maxlength="140" placeholder="ex.: aumentei carga no agachamento"></div>
+          <div class="row"><button class="btn" type="submit">Salvar e recalcular</button><span class="toast" id="logToast" role="status"></span></div>
+        </form>
+      </div>
+      <div class="card">
+        <h3>Histórico</h3>
+        <div class="table-wrap"><table id="histTable"></table></div>
+      </div>
+    </section>
+
+    <!-- PROGRESSO -->
+    <section class="view" id="view-progresso" hidden>
+      <div class="stats" id="progStats"></div>
+      <div class="card">
+        <div><h3>Kcal por semana</h3><div class="small muted">Barras: gasto registrado. Linha: meta da semana.</div></div>
+        <div class="key"><span><i class="sw"></i>Abaixo da meta</span><span><i class="sw ok"></i>Meta batida</span><span><i></i>Meta</span></div>
+        <div class="chart" id="kcalChart"></div>
+      </div>
+      <div class="card">
+        <div><h3>Peso corporal</h3><div class="small muted">Registre o peso no formulário de treino para ver a tendência.</div></div>
+        <div class="chart" id="weightChart"></div>
+      </div>
+      <div class="card" id="nutriCard"></div>
+    </section>
+
+    <!-- AJUSTES -->
+    <section class="view" id="view-ajustes" hidden>
+      <div class="card">
+        <h2>Ajustes ativos</h2>
+        <p class="small muted" style="margin:0">Recalculado a cada registro, com base nas semanas já encerradas: gasto de kcal, minutos, esforço e peso.</p>
+        <div class="stats" id="adjStats"></div>
+      </div>
+      <div id="adjLog" class="adj"></div>
+    </section>
+
+    <!-- PERFIL -->
+    <section class="view" id="view-perfil" hidden>
+      <div class="card">
+        <h2>Seu perfil</h2>
+        <form id="profileForm">
+          <div class="field"><label for="pGoal">Objetivo</label>
+            <select id="pGoal">
+              <option value="emagrecer">Emagrecer (perder gordura)</option>
+              <option value="hipertrofia">Hipertrofia (ganhar massa)</option>
+              <option value="definicao">Definição (perder gordura mantendo massa)</option>
+              <option value="forca">Força</option>
+              <option value="condicionamento">Condicionamento / resistência</option>
+            </select>
+          </div>
+          <div class="grid2">
+            <div class="field"><label for="pSex">Sexo biológico</label><select id="pSex"><option value="f">Feminino</option><option value="m">Masculino</option></select></div>
+            <div class="field"><label for="pAge">Idade</label><input type="number" id="pAge" min="14" max="90" required></div>
+            <div class="field"><label for="pWeight">Peso atual (kg)</label><input type="number" id="pWeight" step="0.1" min="30" max="300" required></div>
+            <div class="field"><label for="pHeight">Altura (cm)</label><input type="number" id="pHeight" min="120" max="230" required></div>
+            <div class="field"><label for="pTarget">Peso meta (kg, opcional)</label><input type="number" id="pTarget" step="0.1" min="30" max="300"></div>
+            <div class="field"><label for="pLevel">Experiência</label><select id="pLevel"><option value="iniciante">Iniciante (&lt; 6 meses)</option><option value="intermediario">Intermediário</option><option value="avancado">Avançado (&gt; 2 anos)</option></select></div>
+            <div class="field"><label for="pDays">Dias por semana</label><select id="pDays"><option>3</option><option>4</option><option>5</option><option>6</option></select></div>
+            <div class="field"><label for="pDur">Duração do treino (min)</label><select id="pDur"><option>45</option><option>60</option><option>75</option><option>90</option></select></div>
+            <div class="field"><label for="pFocus">Foco extra</label><select id="pFocus"><option value="equilibrado">Equilibrado</option><option value="inferiores">Pernas e glúteos</option><option value="superiores">Tronco e braços</option></select></div>
+            <div class="field"><label for="pStart">Início do programa</label><input type="date" id="pStart" required></div>
+          </div>
+          <div class="row"><button class="btn" type="submit">Salvar e gerar plano</button><span class="toast" id="profToast" role="status"></span></div>
+        </form>
+      </div>
+      <div class="card">
+        <h3>Backup</h3>
+        <p class="small muted" style="margin:0">Copie seus dados para guardar ou colar em outro aparelho.</p>
+        <div class="row"><button class="btn ghost" type="button" id="copyBtn">Copiar dados</button><button class="btn ghost" type="button" id="importBtn">Importar dados colados</button></div>
+        <textarea id="backupBox" rows="4" placeholder="Cole aqui um backup e toque em Importar"></textarea>
+        <div class="row"><button class="btn danger" type="button" id="resetBtn">Apagar tudo</button><span class="small" id="resetConfirm" hidden>Tem certeza? <button class="btn danger" type="button" id="resetYes">Sim, apagar</button></span></div>
+        <span class="toast" id="backupToast" role="status"></span>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(() => {
+"use strict";
+/* ============ BIBLIOTECA DE EXERCÍCIOS (academia completa) ============ */
+// c: composto (multiarticular) · eq: equipamento
+const LIB = {
+  peito: [
+    {n:"Supino reto com barra", c:1, eq:"Banco + barra"},
+    {n:"Supino inclinado com halteres", c:1, eq:"Banco inclinado"},
+    {n:"Supino reto na máquina", c:1, eq:"Máquina articulada"},
+    {n:"Supino inclinado no Smith", c:1, eq:"Smith"},
+    {n:"Crucifixo no cross-over", eq:"Cross-over"},
+    {n:"Peck deck (voador)", eq:"Peck deck"},
+    {n:"Crossover polia baixa", eq:"Cross-over"},
+    {n:"Crucifixo inclinado com halteres", eq:"Banco inclinado"}
+  ],
+  costas: [
+    {n:"Puxada frontal aberta", c:1, eq:"Pulley alto"},
+    {n:"Remada curvada com barra", c:1, eq:"Barra"},
+    {n:"Barra fixa no graviton", c:1, eq:"Graviton"},
+    {n:"Remada cavalinho (T-bar)", c:1, eq:"T-bar"},
+    {n:"Remada baixa no triângulo", eq:"Remada sentada"},
+    {n:"Remada unilateral com halter", eq:"Banco + halter"},
+    {n:"Pulldown braço estendido", eq:"Pulley alto"},
+    {n:"Puxada supinada", eq:"Pulley alto"}
+  ],
+  ombros: [
+    {n:"Desenvolvimento com halteres", c:1, eq:"Banco 90°"},
+    {n:"Desenvolvimento na máquina", c:1, eq:"Máquina"},
+    {n:"Arnold press", c:1, eq:"Halteres"},
+    {n:"Elevação lateral com halteres", eq:"Halteres"},
+    {n:"Elevação lateral na polia", eq:"Polia baixa"},
+    {n:"Face pull na corda", eq:"Polia alta"},
+    {n:"Crucifixo inverso no peck deck", eq:"Peck deck"}
+  ],
+  biceps: [
+    {n:"Rosca direta com barra W", eq:"Barra W"},
+    {n:"Rosca alternada com halteres", eq:"Halteres"},
+    {n:"Rosca martelo", eq:"Halteres"},
+    {n:"Rosca Scott na máquina", eq:"Scott"},
+    {n:"Rosca na polia baixa", eq:"Polia"},
+    {n:"Rosca inclinada com halteres", eq:"Banco inclinado"}
+  ],
+  triceps: [
+    {n:"Tríceps pulley com corda", eq:"Polia alta"},
+    {n:"Tríceps testa com barra W", eq:"Banco + barra W"},
+    {n:"Tríceps francês com halter", eq:"Halter"},
+    {n:"Paralelas (mergulho)", eq:"Paralelas / graviton"},
+    {n:"Tríceps pulley barra reta", eq:"Polia alta"},
+    {n:"Tríceps coice na polia", eq:"Polia"}
+  ],
+  quadriceps: [
+    {n:"Agachamento livre", c:1, eq:"Rack + barra"},
+    {n:"Leg press 45°", c:1, eq:"Leg press"},
+    {n:"Hack squat", c:1, eq:"Hack"},
+    {n:"Agachamento no Smith", c:1, eq:"Smith"},
+    {n:"Agachamento búlgaro", eq:"Banco + halteres"},
+    {n:"Cadeira extensora", eq:"Extensora"},
+    {n:"Afundo com halteres", eq:"Halteres"}
+  ],
+  posterior: [
+    {n:"Stiff com barra", c:1, eq:"Barra"},
+    {n:"Levantamento terra romeno com halteres", c:1, eq:"Halteres"},
+    {n:"Good morning", c:1, eq:"Barra"},
+    {n:"Mesa flexora", eq:"Mesa flexora"},
+    {n:"Cadeira flexora", eq:"Cadeira flexora"},
+    {n:"Flexora em pé unilateral", eq:"Flexora em pé"}
+  ],
+  gluteos: [
+    {n:"Elevação pélvica com barra", c:1, eq:"Banco + barra"},
+    {n:"Agachamento sumô com halter", c:1, eq:"Halter"},
+    {n:"Glúteo na polia (coice)", eq:"Polia baixa"},
+    {n:"Cadeira abdutora", eq:"Abdutora"},
+    {n:"Step-up no banco", eq:"Banco + halteres"},
+    {n:"Glúteo na máquina (4 apoios)", eq:"Máquina de glúteo"}
+  ],
+  panturrilha: [
+    {n:"Panturrilha em pé na máquina", eq:"Máquina"},
+    {n:"Panturrilha sentado", eq:"Sóleo sentado"},
+    {n:"Panturrilha no leg press", eq:"Leg press"}
+  ],
+  core: [
+    {n:"Prancha frontal", eq:"Colchonete", t:1},
+    {n:"Abdominal na polia (crunch)", eq:"Polia alta"},
+    {n:"Elevação de pernas na barra", eq:"Barra fixa"},
+    {n:"Pallof press", eq:"Polia"},
+    {n:"Roda abdominal", eq:"Roda"},
+    {n:"Prancha lateral", eq:"Colchonete", t:1}
+  ]
+};
+const GROUP_PT = {peito:"Peito", costas:"Costas", ombros:"Ombros", biceps:"Bíceps", triceps:"Tríceps", quadriceps:"Quadríceps", posterior:"Posterior", gluteos:"Glúteos", panturrilha:"Panturrilha", core:"Core"};
+
+/* ============ DIVISÕES ============ */
+const DAYS = {
+  FA: {name:"Full body A", slots:["quadriceps","peito","costas","ombros","biceps","core"]},
+  FB: {name:"Full body B", slots:["posterior","costas","peito","gluteos","triceps","panturrilha"]},
+  FC: {name:"Full body C", slots:["quadriceps","ombros","costas","peito","posterior","core"]},
+  PUSH: {name:"Empurrar: peito, ombro, tríceps", slots:["peito","peito","ombros","ombros","triceps","triceps"]},
+  PULL: {name:"Puxar: costas, bíceps", slots:["costas","costas","costas","ombros","biceps","biceps","core"]},
+  LEGS: {name:"Pernas completas", slots:["quadriceps","quadriceps","posterior","gluteos","posterior","panturrilha"]},
+  UP:   {name:"Superiores", slots:["peito","costas","ombros","costas","peito","biceps","triceps"]},
+  LOW:  {name:"Inferiores", slots:["quadriceps","posterior","gluteos","quadriceps","panturrilha","core"]}
+};
+function split(p) {
+  const fb = p.level === "iniciante" || p.goal === "emagrecer" || p.goal === "condicionamento";
+  if (p.days === 3) return fb ? ["FA","FB","FC"] : ["PUSH","PULL","LEGS"];
+  if (p.days === 4) return ["UP","LOW","UP","LOW"];
+  if (p.days === 5) return ["PUSH","PULL","LEGS","UP","LOW"];
+  return ["PUSH","PULL","LEGS","PUSH","PULL","LEGS"];
+}
+
+/* ============ ESQUEMAS POR OBJETIVO (muda a cada bloco de 3 semanas) ============ */
+const SCHEMES = {
+  hipertrofia: [{s:4,r:"8–10",rest:90,name:"Volume clássico"},{s:3,r:"12–15",rest:60,name:"Metabólico"},{s:4,r:"6–8",rest:120,name:"Tensão pesada"}],
+  emagrecer:   [{s:3,r:"12–15",rest:45,name:"Resistência muscular"},{s:3,r:"15–20",rest:30,name:"Circuito metabólico"},{s:4,r:"10–12",rest:45,name:"Força-resistência"}],
+  definicao:   [{s:3,r:"10–12",rest:60,name:"Base de definição"},{s:4,r:"8–10",rest:75,name:"Manutenção de força"},{s:3,r:"12–15",rest:45,name:"Densidade"}],
+  forca:       [{s:5,r:"5",rest:180,name:"5×5"},{s:4,r:"3–5",rest:180,name:"Pesado"},{s:5,r:"6–8",rest:150,name:"Acúmulo"}],
+  condicionamento: [{s:3,r:"15",rest:30,name:"Resistência"},{s:3,r:"20",rest:30,name:"Circuito"},{s:4,r:"12",rest:30,name:"Potência-resistência"}]
+};
+const CARDIO_BASE = {emagrecer:25, definicao:20, condicionamento:30, hipertrofia:10, forca:10};
+const KCAL_PER_KG = {emagrecer:34, definicao:28, condicionamento:30, hipertrofia:18, forca:15};
+const CARDIO_OPTS = [
+  {n:"Esteira inclinada", d:"inclinação 10–12%, 5–6 km/h, ritmo contínuo", hiit:"1 min a 8–9 km/h / 1 min caminhando"},
+  {n:"Bike ergométrica", d:"carga moderada, 80–90 rpm", hiit:"30 s forte / 60 s leve"},
+  {n:"Escada (stair climber)", d:"ritmo constante, sem apoiar o peso nos braços", hiit:"1 min rápido / 1 min lento"},
+  {n:"Remo ergométrico", d:"ritmo 22–26 remadas/min", hiit:"250 m forte / 1 min leve"},
+  {n:"Elíptico", d:"resistência média, ritmo contínuo", hiit:"40 s forte / 40 s leve"}
+];
+const GOAL_PT = {emagrecer:"Emagrecer", hipertrofia:"Hipertrofia", definicao:"Definição", forca:"Força", condicionamento:"Condicionamento"};
+
+/* ============ DATAS ============ */
+const DAY_MS = 86400000;
+const iso = d => { const z = new Date(d.getTime() - d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
+const parse = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
+const mondayOf = d => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); const wd = (x.getDay()+6)%7; x.setDate(x.getDate()-wd); return x; };
+const daysBetween = (a,b) => Math.round((b - a) / DAY_MS);
+const fmtDate = s => { const d = parse(s); return d.toLocaleDateString("pt-BR", {day:"2-digit", month:"2-digit"}); };
+const today = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
+const weekIndexOf = (p, dateStr) => Math.floor(daysBetween(mondayOf(parse(p.start)), parse(dateStr)) / 7);
+
+/* ============ ESTADO ============ */
+const DEFAULT_PROFILE = () => ({goal:"emagrecer", sex:"f", age:30, weight:70, height:165, target:63, level:"intermediario", days:4, dur:60, focus:"equilibrado", start:iso(mondayOf(today()))});
+let state = { profile: null, logs: [] };
+let ui = { view: "treino", day: 0 };
+
+/* ============ MOTOR DE AJUSTES ============ */
+// Recalcula do zero a partir de todos os registros: cada semana encerrada gera ajustes que se acumulam.
+function bmr(p) { return 10*p.weight + 6.25*p.height - 5*p.age + (p.sex === "m" ? 5 : -161); }
+function evaluate(p, logs) {
+  const adj = { cardio: 0, volume: 0, kcalFactor: 1, hiit: false };
+  const weeks = [];
+  const curWeek = Math.max(0, weekIndexOf(p, iso(today())));
+  const byWeek = {};
+  for (const l of logs) { const w = weekIndexOf(p, l.date); if (w < 0) continue; (byWeek[w] ||= []).push(l); }
+  let prevWeight = p.weight;
+  const clamp = () => { adj.cardio = Math.max(-10, Math.min(25, adj.cardio)); adj.volume = Math.max(-1, Math.min(2, adj.volume)); adj.kcalFactor = Math.max(.8, Math.min(1.5, Math.round(adj.kcalFactor*100)/100)); };
+  for (let w = 0; w < curWeek; w++) {
+    const L = byWeek[w] || [];
+    const target = weeklyKcalTarget(p, adj);
+    const kcal = L.reduce((a,l)=>a+l.kcal,0), min = L.reduce((a,l)=>a+l.min,0);
+    const sessions = L.length;
+    const wts = L.filter(l=>l.weight).map(l=>l.weight);
+    const avgW = wts.length ? wts.reduce((a,b)=>a+b,0)/wts.length : null;
+    const rpe = sessions ? L.reduce((a,l)=>a+(l.rpe||7),0)/sessions : null;
+    const msgs = [];
+    const rec = { w, kcal, min, sessions, target, avgW, rpe, msgs };
+    if (!sessions) { msgs.push({k:"bad", t:"Semana sem registros. Nenhum ajuste aplicado; retome o plano atual."}); weeks.push(rec); continue; }
+    const ratio = kcal / target, adherence = sessions / p.days, kpm = min ? kcal/min : 0;
+    const lossGoal = p.goal === "emagrecer" || p.goal === "definicao" || p.goal === "condicionamento";
+    // 1) aderência
+    if (adherence < .6) msgs.push({k:"bad", t:`Você treinou ${sessions} de ${p.days} dias. Antes de aumentar a carga, priorize a frequência.`});
+    // 2) gasto calórico
+    if (lossGoal && ratio < .8) { adj.cardio += 5; msgs.push({k:"up", t:`Gasto de ${Math.round(ratio*100)}% da meta. +5 min de cardio por treino.`}); }
+    else if (!lossGoal && ratio > 1.3) { adj.cardio -= 5; msgs.push({k:"down", t:`Gasto de ${Math.round(ratio*100)}% da meta. Gasto alto atrapalha ganho de massa: −5 min de cardio.`}); }
+    else if (ratio >= 1) msgs.push({k:"ok", t:`Meta de gasto batida (${Math.round(ratio*100)}%).`});
+    else msgs.push({k:"ok", t:`Gasto de ${Math.round(ratio*100)}% da meta, dentro da faixa aceitável.`});
+    // 3) intensidade (kcal por minuto)
+    if (lossGoal && kpm > 0 && kpm < 6 && !adj.hiit) { adj.hiit = true; msgs.push({k:"up", t:`Média de ${kpm.toFixed(1)} kcal/min. O cardio passa para intervalado (HIIT) para subir a intensidade.`}); }
+    else if (adj.hiit && kpm >= 8) { adj.hiit = false; msgs.push({k:"down", t:`Intensidade boa (${kpm.toFixed(1)} kcal/min). Cardio volta ao ritmo contínuo.`}); }
+    // 4) peso
+    if (avgW && prevWeight) {
+      const rate = (avgW - prevWeight) / prevWeight * 100;
+      const r = rate.toFixed(2).replace(".", ",");
+      if (p.goal === "emagrecer") {
+        if (rate > -0.25) { adj.cardio += 5; adj.kcalFactor += .1; msgs.push({k:"up", t:`Peso variou ${r}%/semana (ideal −0,5 a −1%). +5 min de cardio e meta de gasto +10%. Revise também a alimentação.`}); }
+        else if (rate < -1.2) { adj.cardio -= 5; adj.kcalFactor -= .1; msgs.push({k:"down", t:`Perda rápida (${r}%/semana) aumenta o risco de perder músculo. −5 min de cardio e meta −10%.`}); }
+        else msgs.push({k:"ok", t:`Perda de peso no ritmo ideal (${r}%/semana).`});
+      } else if (p.goal === "definicao") {
+        if (rate > 0) { adj.cardio += 5; adj.kcalFactor += .05; msgs.push({k:"up", t:`Peso subiu ${r}%. +5 min de cardio e meta de gasto +5%.`}); }
+        else if (rate < -0.8) { adj.cardio -= 5; msgs.push({k:"down", t:`Queda rápida (${r}%). −5 min de cardio para preservar massa.`}); }
+        else msgs.push({k:"ok", t:`Peso estável ou em leve queda (${r}%), como esperado na definição.`});
+      } else if (p.goal === "hipertrofia") {
+        if (rate < 0) { adj.cardio -= 5; adj.kcalFactor -= .1; msgs.push({k:"down", t:`Peso caiu ${r}%. −5 min de cardio; aumente a alimentação em cerca de 200 kcal/dia.`}); }
+        else if (rate > 0.6) { adj.cardio += 5; msgs.push({k:"up", t:`Ganho rápido (${r}%/semana) tende a ser gordura. +5 min de cardio.`}); }
+        else msgs.push({k:"ok", t:`Ganho de peso controlado (${r}%/semana).`});
+      } else if (p.goal === "forca" && rate < -0.5) { adj.cardio -= 5; msgs.push({k:"down", t:`Peso caindo (${r}%). Menos cardio para preservar força.`}); }
+      prevWeight = avgW;
+    }
+    // 5) esforço percebido -> volume
+    if (rpe !== null) {
+      if (rpe < 6 && adherence >= .6 && adj.volume < 2) { adj.volume += 1; msgs.push({k:"up", t:`Esforço médio ${rpe.toFixed(1)}/10, está leve. +1 série por exercício; suba a carga.`}); }
+      else if (rpe > 8.5 && adj.volume > -1) { adj.volume -= 1; msgs.push({k:"down", t:`Esforço médio ${rpe.toFixed(1)}/10, fadiga alta. −1 série por exercício para recuperar.`}); }
+    }
+    clamp();
+    rec.after = {...adj};
+    weeks.push(rec);
+  }
+  clamp();
+  // meta atingida
+  let reached = false;
+  const lastW = [...logs].filter(l=>l.weight).sort((a,b)=>a.date<b.date?-1:1).pop();
+  if (p.target && lastW) {
+    if ((p.goal === "emagrecer" || p.goal === "definicao") && lastW.weight <= p.target) reached = true;
+    if (p.goal === "hipertrofia" && lastW.weight >= p.target) reached = true;
+  }
+  return { adj, weeks, curWeek, reached };
+}
+function weeklyKcalTarget(p, adj) { return Math.round(p.weight * KCAL_PER_KG[p.goal] * adj.kcalFactor / 10) * 10; }
+
+/* ============ GERADOR DE TREINO ============ */
+function buildPlan(p, adj, weekIdx) {
+  const block = Math.floor(weekIdx / 3), wib = weekIdx % 3;
+  const scheme = SCHEMES[p.goal][block % 3];
+  const keys = split(p);
+  const cardioMin0 = Math.max(0, CARDIO_BASE[p.goal] + adj.cardio);
+  const cardioOpt = CARDIO_OPTS[(block + (p.goal==="hipertrofia"?2:0)) % CARDIO_OPTS.length];
+  const repeatCount = {};
+  const days = keys.map((k, di) => {
+    const rep = repeatCount[k] = (repeatCount[k] ?? -1) + 1;
+    let slots = DAYS[k].slots.slice();
+    if (p.focus === "inferiores" && ["FA","FB","FC","LEGS","LOW"].includes(k)) slots.splice(2, 0, "gluteos");
+    if (p.focus === "superiores" && ["FA","FB","FC","PUSH","PULL","UP"].includes(k)) slots.splice(2, 0, k==="PULL"?"costas":"ombros");
+    const used = {};
+    let exs = slots.map((g, si) => {
+      const list = LIB[g];
+      const occ = used[g] = (used[g] ?? -1) + 1;
+      const comp = list.filter(e => e.c), iso_ = list.filter(e => !e.c);
+      let pick;
+      const seed = block * 2 + rep * 3 + di;
+      if (occ === 0 && comp.length && si < 3) pick = comp[seed % comp.length];
+      else { const pool = iso_.length ? iso_ : list; pick = pool[(seed + occ) % pool.length]; }
+      return { g, ...pick };
+    });
+    // remove duplicados do mesmo dia
+    const seen = new Set();
+    exs = exs.map(e => {
+      if (!seen.has(e.n)) { seen.add(e.n); return e; }
+      const alt = LIB[e.g].find(x => !seen.has(x.n)); seen.add(alt.n); return { g:e.g, ...alt };
+    });
+    // séries e repetições
+    let sets = scheme.s + adj.volume + (p.level === "iniciante" ? -1 : 0) + (p.level === "avancado" ? 0 : 0);
+    sets = Math.max(2, sets);
+    exs = exs.map((e, i) => {
+      let s = sets, r = scheme.r, rest = scheme.rest;
+      if (e.c && i < 2 && p.goal !== "forca" && p.goal !== "condicionamento") { /* compostos principais ganham mais descanso */ rest = Math.max(rest, 90); }
+      if (!e.c && p.goal === "forca") { s = Math.max(2, s - 2); r = "8–10"; rest = 90; }
+      if (e.g === "core") { r = e.t ? "30–45 s" : "12–15"; rest = 45; s = Math.min(s, 3); }
+      if (e.g === "panturrilha") { r = "12–20"; rest = 45; }
+      if (wib === 1 && i < 2) s += 1;
+      s = Math.min(s, p.goal === "forca" ? 6 : 5);
+      return { ...e, s, r, rest };
+    });
+    // encaixa no tempo disponível
+    const estimate = list => list.reduce((a, e) => a + e.s * (0.75 + e.rest/60), 0);
+    let cardio = Math.min(cardioMin0, Math.round(p.dur * 0.4));
+    const cardioExtra = cardioMin0 - cardio;
+    const avail = () => p.dur - 8 - cardio;
+    while (exs.length > 4 && estimate(exs) > avail()) exs.pop();
+    if (estimate(exs) > avail() && cardio > 10) cardio = Math.max(10, Math.round(p.dur - 8 - estimate(exs)));
+    return { key:k, name: DAYS[k].name, exs, cardio, cardioExtra, strengthMin: Math.round(estimate(exs)) };
+  });
+  const notes = [
+    "Semana 1 de 3 · adaptação. Escolha cargas que deixem 2–3 repetições sobrando no fim da série.",
+    "Semana 2 de 3 · progressão. Aumente 2–5% a carga ou faça 1–2 repetições a mais que na semana 1. Os dois primeiros exercícios ganham +1 série.",
+    p.level === "iniciante"
+      ? "Semana 3 de 3 · pico. Mesma carga da semana 2, tentando bater seu recorde de repetições com boa técnica."
+      : "Semana 3 de 3 · pico. Mesma carga da semana 2 e drop-set ou rest-pause na última série dos exercícios isolados."
+  ];
+  return { block, wib, scheme, days, cardioOpt, note: notes[wib] };
+}
+
+/* ============ PERSISTÊNCIA ============ */
+let db = null, docRef = null, writing = Promise.resolve(), mode = "local";
+const LS_KEY = "treino-adaptativo-v1";
+function loadLocal() { try { const s = localStorage.getItem(LS_KEY); if (s) return JSON.parse(s); } catch (e) {} return null; }
+function saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
+function persist() {
+  saveLocal();
+  if (!docRef) return Promise.resolve();
+  const snapshot = JSON.parse(JSON.stringify(state));
+  writing = writing.then(() => docRef.set(snapshot)).catch(e => {
+    showStore(e && e.code === "quota_exceeded" ? "Espaço de dados cheio. Apague registros antigos." : "Não foi possível salvar na nuvem agora. Seus dados ficaram neste aparelho.");
+  });
+  return writing;
+}
+function showStore(t) { const b = document.getElementById("storeBanner"); b.textContent = t; b.hidden = !t; }
+async function connect() {
+  if (!window.claude || !window.claude.use) return;
+  try {
+    const [d, u] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+    if (!d || !u) return;
+    const id = await u.id();
+    if (!id) return;
+    db = d; docRef = db.doc("data/users/" + id + "/state"); mode = "cloud";
+    let loaded = false;
+    const timer = setTimeout(() => { if (!loaded) showStore("Ainda carregando seus dados da nuvem…"); }, 10000);
+    docRef.onSnapshot(snap => {
+      if (!snap.metadata.fromCache) { loaded = true; clearTimeout(timer); showStore(""); }
+      if (snap.exists) {
+        const data = snap.data();
+        if (snap.metadata.hasPendingWrites) return;
+        state = { profile: data.profile || null, logs: Array.isArray(data.logs) ? data.logs.map(l => ({...l})) : [] };
+        saveLocal(); render();
+      } else if (!snap.metadata.fromCache && (state.profile || state.logs.length)) {
+        persist(); // migra dados locais
+      }
+    }, () => { clearTimeout(timer); showStore("Sincronização indisponível. Usando dados deste aparelho."); });
+  } catch (e) { /* segue local */ }
+}
+
+/* ============ RENDER ============ */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const nf = n => Math.round(n).toLocaleString("pt-BR");
+function ctx() {
+  const p = state.profile || DEFAULT_PROFILE();
+  const ev = evaluate(p, state.logs);
+  const plan = buildPlan(p, ev.adj, ev.curWeek);
+  return { p, ev, plan, example: !state.profile };
+}
+function render() {
+  const c = ctx();
+  $("exampleBanner").hidden = !c.example;
+  const { p, ev, plan } = c;
+  $("blockTag").textContent = `${GOAL_PT[p.goal]} · Bloco ${plan.block+1} · Semana ${plan.wib+1}/3`;
+  renderTreino(c); renderLogForm(c); renderHistory(c); renderProgress(c); renderAdjust(c);
+}
+function weekLogs(p, w) { return state.logs.filter(l => weekIndexOf(p, l.date) === w); }
+function renderTreino({ p, ev, plan }) {
+  const L = weekLogs(p, ev.curWeek);
+  const target = weeklyKcalTarget(p, ev.adj);
+  const kcal = L.reduce((a,l)=>a+l.kcal,0), min = L.reduce((a,l)=>a+l.min,0);
+  const pct = Math.min(100, Math.round(kcal / target * 100));
+  $("weekStats").innerHTML = `
+    <div class="stat"><span class="label">Kcal da semana</span><span class="v num">${nf(kcal)} <small>/ ${nf(target)}</small></span><div class="meter ${pct>=100?"ok":""}"><span style="width:${pct}%"></span></div></div>
+    <div class="stat"><span class="label">Treinos</span><span class="v num">${L.length} <small>/ ${p.days}</small></span><div class="meter ${L.length>=p.days?"ok":""}"><span style="width:${Math.min(100, L.length/p.days*100)}%"></span></div></div>
+    <div class="stat"><span class="label">Minutos</span><span class="v num">${nf(min)} <small>/ ${p.days*p.dur}</small></span><div class="meter ${min>=p.days*p.dur?"ok":""}"><span style="width:${Math.min(100, min/(p.days*p.dur)*100)}%"></span></div></div>
+    <div class="stat"><span class="label">Meta por treino</span><span class="v num">${nf(target/p.days)} <small>kcal</small></span><span class="small muted">em cerca de ${p.dur} min</span></div>`;
+  $("phaseLabel").textContent = `Bloco ${plan.block+1} · troca a cada 3 semanas`;
+  $("phaseTitle").textContent = `${plan.scheme.name}: ${plan.scheme.s}×${plan.scheme.r}`;
+  const start = mondayOf(parse(p.start));
+  const nextSwap = new Date(start.getTime() + (plan.block+1)*21*DAY_MS);
+  const left = daysBetween(today(), nextSwap);
+  $("nextSwap").textContent = left > 0 ? `Novo treino em ${left} dia${left>1?"s":""} (${nextSwap.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})` : "";
+  [...$("phaseBar").children].forEach((s, i) => s.className = i < plan.wib ? "done" : i === plan.wib ? "on" : "");
+  $("phaseNote").textContent = plan.note + (ev.reached ? " Você atingiu seu peso meta. Considere mudar o objetivo no perfil." : "");
+  if (ui.day >= plan.days.length) ui.day = 0;
+  $("dayPicker").innerHTML = plan.days.map((d, i) => `<button type="button" data-day="${i}" aria-pressed="${i===ui.day}">Treino ${String.fromCharCode(65+i)}</button>`).join("");
+  const d = plan.days[ui.day];
+  const cardioTxt = ev.adj.hiit ? `Intervalado: ${plan.cardioOpt.hiit}` : plan.cardioOpt.d;
+  $("dayCard").innerHTML = `
+    <div class="weekhead"><h3>Treino ${String.fromCharCode(65+ui.day)} · ${esc(d.name)}</h3><span class="small muted num">≈ ${8 + d.strengthMin + d.cardio} min</span></div>
+    <div class="small muted">Aquecimento: 5 min de bike leve + 2 séries leves do primeiro exercício.</div>
+    <div>${d.exs.map((e, i) => `
+      <div class="ex"><span class="n">${i+1}</span><span class="name">${esc(e.n)}</span><span class="scheme">${e.s}×${esc(e.r)}</span>
+      <span class="meta">${GROUP_PT[e.g]} · ${esc(e.eq)} · descanso ${e.rest >= 60 ? (e.rest/60).toString().replace(".", ",") + " min" : e.rest + " s"}</span></div>`).join("")}
+    </div>
+    ${d.cardio > 0 ? `<div class="ex" style="border-top:1px solid var(--line)"><span class="n">+</span><span class="name">Cardio: ${esc(plan.cardioOpt.n)}</span><span class="scheme">${d.cardio} min</span><span class="meta">${esc(cardioTxt)}</span></div>` : ""}
+    ${d.cardioExtra > 0 ? `<div class="small muted">Os ajustes pedem mais ${d.cardioExtra} min de cardio do que cabem nesta sessão. Faça esse tempo em outro dia ou em uma caminhada.</div>` : ""}`;
+}
+function renderLogForm({ plan }) {
+  const sel = $("lDay"), cur = sel.value;
+  sel.innerHTML = plan.days.map((d, i) => `<option value="${String.fromCharCode(65+i)}">Treino ${String.fromCharCode(65+i)} · ${esc(d.name)}</option>`).join("") + `<option value="cardio">Só cardio</option><option value="outro">Outra atividade</option>`;
+  if (cur) sel.value = cur; else sel.value = String.fromCharCode(65 + ui.day);
+  if (!$("lDate").value) $("lDate").value = iso(today());
+}
+function renderHistory() {
+  const rows = [...state.logs].sort((a,b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+  if (!rows.length) { $("histTable").innerHTML = `<tr><td class="muted">Nenhum treino registrado ainda. Use o formulário acima depois de cada treino.</td></tr>`; return; }
+  $("histTable").innerHTML = `<thead><tr><th>Data</th><th>Treino</th><th class="num">Kcal</th><th class="num">Min</th><th class="num">kcal/min</th><th class="num">Esforço</th><th class="num">Peso</th><th></th></tr></thead><tbody>` +
+    rows.map(l => `<tr><td class="num">${fmtDate(l.date)}</td><td>${esc(l.day === "cardio" ? "Cardio" : l.day === "outro" ? "Outro" : "Treino " + l.day)}${l.note ? `<div class="small muted">${esc(l.note)}</div>` : ""}</td><td class="num">${nf(l.kcal)}</td><td class="num">${l.min}</td><td class="num">${(l.kcal/l.min).toFixed(1).replace(".", ",")}</td><td class="num">${l.rpe}</td><td class="num">${l.weight ? l.weight.toFixed(1).replace(".", ",") : "—"}</td><td><button class="btn danger" type="button" data-del="${esc(l.id)}">Excluir</button></td></tr>`).join("") + `</tbody>`;
+}
+function renderAdjust({ p, ev }) {
+  const a = ev.adj;
+  const sign = n => (n > 0 ? "+" : n < 0 ? "−" : "") + Math.abs(n);
+  $("adjStats").innerHTML = `
+    <div class="stat"><span class="label">Cardio por treino</span><span class="v num">${Math.max(0, CARDIO_BASE[p.goal]+a.cardio)} <small>min (${sign(a.cardio)})</small></span></div>
+    <div class="stat"><span class="label">Séries extras</span><span class="v num">${sign(a.volume) || "0"} <small>por exercício</small></span></div>
+    <div class="stat"><span class="label">Meta semanal</span><span class="v num">${nf(weeklyKcalTarget(p, a))} <small>kcal (${Math.round(a.kcalFactor*100)}%)</small></span></div>
+    <div class="stat"><span class="label">Cardio</span><span class="v" style="font-size:22px">${a.hiit ? "Intervalado" : "Contínuo"}</span></div>`;
+  const labels = {up:"Aumentou", down:"Reduziu", ok:"Mantido", bad:"Atenção"};
+  if (!ev.weeks.length) { $("adjLog").innerHTML = `<div class="card"><p class="muted" style="margin:0">Os ajustes começam quando a primeira semana do programa terminar. Registre cada treino com kcal e tempo, e o peso pelo menos uma vez por semana.</p></div>`; return; }
+  $("adjLog").innerHTML = ev.weeks.slice().reverse().map(w => {
+    const start = new Date(mondayOf(parse(p.start)).getTime() + w.w*7*DAY_MS);
+    return `<div class="card"><div class="weekhead"><h3>Semana ${w.w+1} · bloco ${Math.floor(w.w/3)+1}</h3><span class="small muted num">${start.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})} · ${nf(w.kcal)}/${nf(w.target)} kcal · ${w.sessions} treinos</span></div>
+      ${w.msgs.map(m => `<div class="msg"><span class="pill ${m.k}">${labels[m.k]}</span><span>${esc(m.t)}</span></div>`).join("")}</div>`;
+  }).join("");
+}
+function renderProgress({ p, ev }) {
+  const all = state.logs;
+  const totalK = all.reduce((a,l)=>a+l.kcal,0), totalM = all.reduce((a,l)=>a+l.min,0);
+  const wts = [...all].filter(l=>l.weight).sort((a,b)=>a.date<b.date?-1:1);
+  const lastW = wts.length ? wts[wts.length-1].weight : p.weight;
+  // projeção
+  let proj = "Registre o peso por 2 semanas para estimar";
+  if (p.target && wts.length >= 2) {
+    const first = wts[0], last = wts[wts.length-1];
+    const span = daysBetween(parse(first.date), parse(last.date));
+    if (span >= 7) {
+      const rate = (last.weight - first.weight) / span * 7;
+      const diff = p.target - last.weight;
+      if (Math.abs(diff) < 0.1) proj = "Meta atingida";
+      else if (rate !== 0 && Math.sign(rate) === Math.sign(diff)) proj = `≈ ${Math.ceil(diff / rate)} semanas`;
+      else proj = "Tendência contrária à meta";
+    }
+  } else if (!p.target) proj = "Defina um peso meta";
+  $("progStats").innerHTML = `
+    <div class="stat"><span class="label">Kcal totais</span><span class="v num">${nf(totalK)}</span><span class="small muted">≈ ${(totalK/7700).toFixed(1).replace(".", ",")} kg de gordura em energia</span></div>
+    <div class="stat"><span class="label">Tempo total</span><span class="v num">${Math.floor(totalM/60)}h${String(totalM%60).padStart(2,"0")}</span><span class="small muted">${all.length} treinos</span></div>
+    <div class="stat"><span class="label">Peso</span><span class="v num">${lastW.toFixed(1).replace(".", ",")} <small>kg</small></span><span class="small muted">${p.target ? "meta " + p.target.toFixed(1).replace(".", ",") + " kg" : "sem meta"}</span></div>
+    <div class="stat"><span class="label">Previsão até a meta</span><span class="v" style="font-size:22px">${esc(proj)}</span></div>`;
+  // gráfico kcal semanal (últimas 8 semanas)
+  const weeksN = 8, cw = ev.curWeek;
+  const from = Math.max(0, cw - weeksN + 1);
+  const data = [];
+  for (let w = from; w <= cw; w++) {
+    const L = weekLogs(p, w);
+    const rec = ev.weeks.find(x => x.w === w);
+    data.push({ w, kcal: L.reduce((a,l)=>a+l.kcal,0), target: rec ? rec.target : weeklyKcalTarget(p, ev.adj) });
+  }
+  barChart($("kcalChart"), data);
+  lineChart($("weightChart"), wts.map(l => ({ date: l.date, v: l.weight })), p.target, p.weight, p.start);
+  // nutrição
+  const af = p.days <= 3 ? 1.375 : p.days <= 5 ? 1.55 : 1.725;
+  const tdee = bmr({ ...p, weight: lastW }) * af;
+  const delta = { emagrecer:-450, definicao:-250, hipertrofia:250, forca:150, condicionamento:0 }[p.goal];
+  const prot = { emagrecer:1.8, definicao:2.0, hipertrofia:1.8, forca:1.8, condicionamento:1.4 }[p.goal];
+  $("nutriCard").innerHTML = `<h3>Referência de alimentação</h3>
+    <div class="stats">
+      <div class="stat"><span class="label">Gasto diário estimado</span><span class="v num">${nf(tdee)} <small>kcal</small></span></div>
+      <div class="stat"><span class="label">Consumo sugerido</span><span class="v num">${nf(tdee + delta)} <small>kcal/dia</small></span></div>
+      <div class="stat"><span class="label">Proteína</span><span class="v num">${nf(prot * lastW)} <small>g/dia</small></span></div>
+    </div>
+    <p class="small muted" style="margin:0">Estimativa pela fórmula de Mifflin-St Jeor. Treino sozinho raramente fecha o déficit ou superávit; para um plano alimentar, procure um nutricionista.</p>`;
+}
+
+/* ============ GRÁFICOS (SVG) ============ */
+const tipEl = () => { let t = document.createElement("div"); t.className = "tip"; t.hidden = true; return t; };
+function niceMax(v) { if (v <= 0) return 100; const p = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1,2,2.5,5,10]) if (m*p >= v) return m*p; return 10*p; }
+function barChart(el, data) {
+  const W = 360, H = 190, ml = 40, mr = 6, mt = 12, mb = 22;
+  const max = niceMax(Math.max(...data.map(d => Math.max(d.kcal, d.target))) * 1.05);
+  const iw = W - ml - mr, ih = H - mt - mb, band = iw / data.length, bw = Math.min(24, band * .6);
+  const y = v => mt + ih - v / max * ih;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Kcal gastas por semana comparadas à meta">`;
+  for (let i = 0; i <= 4; i++) { const v = max / 4 * i; s += `<line class="grid" x1="${ml}" x2="${W-mr}" y1="${y(v)}" y2="${y(v)}"/><text x="${ml-6}" y="${y(v)+4}" text-anchor="end">${nf(v)}</text>`; }
+  data.forEach((d, i) => {
+    const cx = ml + band * i + band / 2, h = ih - (y(d.kcal) - mt);
+    const r = Math.min(4, h / 2);
+    if (d.kcal > 0) s += `<path class="bar ${d.kcal >= d.target ? "ok" : ""}" d="M${cx-bw/2},${y(0)} V${y(d.kcal)+r} q0,-${r} ${r},-${r} H${cx+bw/2-r} q${r},0 ${r},${r} V${y(0)} Z"/>`;
+    s += `<line class="target" x1="${cx-band*.4}" x2="${cx+band*.4}" y1="${y(d.target)}" y2="${y(d.target)}"/>`;
+    s += `<text x="${cx}" y="${H-6}" text-anchor="middle">S${d.w+1}</text>`;
+    s += `<rect class="hit" x="${ml+band*i}" y="${mt}" width="${band}" height="${ih}" data-tip="Semana ${d.w+1}: ${nf(d.kcal)} de ${nf(d.target)} kcal" data-x="${cx}" data-y="${Math.min(y(d.kcal), y(d.target))}"/>`;
+  });
+  s += `</svg>`;
+  mount(el, s, W);
+}
+function lineChart(el, pts, target, startW, startDate) {
+  const data = [{ date: startDate, v: startW, start: true }, ...pts.filter(p => p.date >= startDate)];
+  if (data.length < 2) { el.innerHTML = `<p class="small muted" style="margin:0">Peso inicial: ${startW.toFixed(1).replace(".", ",")} kg. A linha aparece a partir do primeiro peso registrado.</p>`; return; }
+  const W = 360, H = 190, ml = 30, mr = 8, mt = 14, mb = 22;
+  const vals = data.map(d => d.v).concat(target ? [target] : []);
+  let lo = Math.floor(Math.min(...vals) - 1), hi = Math.ceil(Math.max(...vals) + 1);
+  const t0 = parse(data[0].date).getTime(), t1 = Math.max(parse(data[data.length-1].date).getTime(), t0 + DAY_MS);
+  const x = d => ml + (parse(d).getTime() - t0) / (t1 - t0) * (W - ml - mr);
+  const y = v => mt + (hi - v) / (hi - lo) * (H - mt - mb);
+  const step = Math.max(1, Math.ceil((hi - lo) / 4));
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolução do peso corporal">`;
+  for (let v = lo; v <= hi; v += step) s += `<line class="grid" x1="${ml}" x2="${W-mr}" y1="${y(v)}" y2="${y(v)}"/><text x="${ml-6}" y="${y(v)+4}" text-anchor="end">${v}</text>`;
+  if (target) s += `<line class="goal" x1="${ml}" x2="${W-mr}" y1="${y(target)}" y2="${y(target)}"/><text x="${W-mr}" y="${y(target)-5}" text-anchor="end">meta ${String(target).replace(".", ",")}</text>`;
+  s += `<path class="wline" d="${data.map((d,i) => (i?"L":"M") + x(d.date).toFixed(1) + "," + y(d.v).toFixed(1)).join(" ")}"/>`;
+  data.forEach(d => { s += `<circle class="wdot" cx="${x(d.date)}" cy="${y(d.v)}" r="4.5"/><circle class="hit" cx="${x(d.date)}" cy="${y(d.v)}" r="12" data-tip="${fmtDate(d.date)}: ${d.v.toFixed(1).replace(".", ",")} kg${d.start ? " (início)" : ""}" data-x="${x(d.date)}" data-y="${y(d.v)}"/>`; });
+  s += `<text x="${ml}" y="${H-8}">${fmtDate(data[0].date)}</text><text x="${W-mr}" y="${H-8}" text-anchor="end">${fmtDate(data[data.length-1].date)}</text>`;
+  s += `</svg>`;
+  mount(el, s, W);
+}
+function mount(el, svg, W) {
+  el.innerHTML = svg; const tip = tipEl(); el.appendChild(tip);
+  const svgEl = el.querySelector("svg");
+  const show = t => { const sc = svgEl.getBoundingClientRect().width / W; tip.textContent = t.dataset.tip; tip.style.left = (t.dataset.x * sc) + "px"; tip.style.top = (t.dataset.y * sc) + "px"; tip.hidden = false; };
+  el.querySelectorAll(".hit").forEach(h => { h.addEventListener("mouseenter", () => show(h)); h.addEventListener("click", () => show(h)); h.addEventListener("mouseleave", () => tip.hidden = true); });
+}
+
+/* ============ EVENTOS ============ */
+function go(view) {
+  ui.view = view;
+  document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.view === view));
+  document.querySelectorAll("section.view").forEach(s => s.hidden = s.id !== "view-" + view);
+  if (view === "perfil") fillProfile();
+  try { if (location.hash.slice(1) !== view) history.replaceState(null, "", "#" + view); } catch (e) {}
+}
+document.querySelector("nav.tabs").addEventListener("click", e => { const b = e.target.closest("button[data-view]"); if (b) go(b.dataset.view); });
+document.addEventListener("click", e => { const a = e.target.closest("[data-go]"); if (a) { e.preventDefault(); go(a.dataset.go); } });
+$("dayPicker").addEventListener("click", e => { const b = e.target.closest("button[data-day]"); if (b) { ui.day = +b.dataset.day; render(); } });
+$("lRpe").addEventListener("input", e => $("rpeVal").textContent = e.target.value);
+$("logForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const kcal = +$("lKcal").value, min = +$("lMin").value;
+  if (!(kcal >= 0) || !(min > 0)) return;
+  const w = parseFloat($("lWeight").value);
+  state.logs.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), date: $("lDate").value, day: $("lDay").value, kcal, min, rpe: +$("lRpe").value, weight: w > 0 ? w : null, note: $("lNote").value.trim() });
+  $("lKcal").value = ""; $("lMin").value = ""; $("lWeight").value = ""; $("lNote").value = "";
+  render(); await persist();
+  $("logToast").textContent = "Salvo. Plano recalculado.";
+  setTimeout(() => $("logToast").textContent = "", 3000);
+});
+$("histTable").addEventListener("click", async e => {
+  const b = e.target.closest("button[data-del]"); if (!b) return;
+  if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Confirmar"; return; }
+  state.logs = state.logs.filter(l => l.id !== b.dataset.del); render(); await persist();
+});
+function fillProfile() {
+  const p = state.profile || DEFAULT_PROFILE();
+  $("pGoal").value = p.goal; $("pSex").value = p.sex; $("pAge").value = p.age; $("pWeight").value = p.weight; $("pHeight").value = p.height;
+  $("pTarget").value = p.target || ""; $("pLevel").value = p.level; $("pDays").value = p.days; $("pDur").value = p.dur; $("pFocus").value = p.focus; $("pStart").value = p.start;
+}
+$("profileForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const t = parseFloat($("pTarget").value);
+  state.profile = { goal: $("pGoal").value, sex: $("pSex").value, age: +$("pAge").value, weight: +$("pWeight").value, height: +$("pHeight").value, target: t > 0 ? t : null, level: $("pLevel").value, days: +$("pDays").value, dur: +$("pDur").value, focus: $("pFocus").value, start: $("pStart").value };
+  render(); await persist();
+  $("profToast").textContent = "Perfil salvo. Plano gerado.";
+  setTimeout(() => { $("profToast").textContent = ""; go("treino"); }, 900);
+});
+$("copyBtn").addEventListener("click", () => {
+  const txt = JSON.stringify(state); const box = $("backupBox"); box.value = txt;
+  const done = () => { $("backupToast").textContent = "Dados copiados."; };
+  try { navigator.clipboard.writeText(txt).then(done, () => { box.select(); $("backupToast").textContent = "Texto selecionado. Copie manualmente."; }); }
+  catch (err) { box.select(); }
+});
+$("importBtn").addEventListener("click", async () => {
+  try {
+    const d = JSON.parse($("backupBox").value);
+    if (!d || !Array.isArray(d.logs)) throw 0;
+    state = { profile: d.profile || null, logs: d.logs }; render(); await persist();
+    $("backupToast").textContent = `Importado: ${d.logs.length} registros.`;
+  } catch (err) { $("backupToast").textContent = "Texto inválido. Cole exatamente o que foi copiado em Copiar dados."; }
+});
+$("resetBtn").addEventListener("click", () => $("resetConfirm").hidden = false);
+$("resetYes").addEventListener("click", async () => { state = { profile: null, logs: [] }; $("resetConfirm").hidden = true; render(); await persist(); $("backupToast").textContent = "Dados apagados."; });
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (["treino","registrar","progresso","ajustes","perfil"].includes(h)) go(h); });
+
+/* ============ INÍCIO ============ */
+const local = loadLocal(); if (local) state = { profile: local.profile || null, logs: local.logs || [] };
+render();
+const h = location.hash.slice(1);
+go(["treino","registrar","progresso","ajustes","perfil"].includes(h) ? h : (state.profile ? "treino" : "perfil"));
+connect();
+})();
+</script>
