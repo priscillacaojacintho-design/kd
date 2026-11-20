@@ -37,6 +37,13 @@
   --good-soft: #e1e2c6;
   --warn-soft: #f0dcbc;
   --bad-soft: #f1d4cb;
+  /* cores de apoio: marcam grupos, contadores e abas */
+  --rose: #c7767c; --rose-soft: #f4dcd9;
+  --sage: #7d9868; --sage-soft: #e0e8d3;
+  --blue: #6687ad; --blue-soft: #dbe4ee;
+  --ochre: #c4912f; --ochre-soft: #f3e3bf;
+  --plum: #8d6694; --plum-soft: #e9dcea;
+  --teal: #4a8a84; --teal-soft: #d4e7e3;
   --font-display: "Cormorant Garamond", "Garamond", "Times New Roman", serif;
   --font-body: "EB Garamond", "Garamond", Georgia, serif;
   --font-mono: "Cormorant Garamond", "Garamond", Georgia, serif;
@@ -56,40 +63,58 @@ h2 { font-size: 32px; }
 h3 { font-size: 25px; font-weight: 400; }
 .block-tag { font-family: var(--font-display); font-style: italic; font-size: 17px; color: var(--fg-2); }
 nav.tabs { display: flex; gap: 2px; margin-top: 14px; overflow-x: auto; scrollbar-width: none; }
-nav.tabs button { flex: 1 0 auto; background: none; border: 0; border-bottom: 1px solid transparent; padding: 8px 6px 10px; font: 400 18px var(--font-display); letter-spacing: .02em; color: var(--muted); cursor: pointer; }
-nav.tabs button[aria-selected="true"] { color: var(--fg); border-bottom: 2px solid var(--accent); font-style: italic; }
+nav.tabs button { flex: 1 0 auto; background: none; border: 0; border-bottom: 1px solid transparent; padding: 8px 4px 10px; font: 400 17px var(--font-display); letter-spacing: .02em; color: var(--muted); cursor: pointer; }
+nav.tabs button[aria-selected="true"] { color: var(--fg); border-bottom: 3px solid var(--c, var(--accent)); font-style: italic; }
+nav.tabs button::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--c); margin-right: 4px; vertical-align: middle; opacity: .55; }
+nav.tabs button[aria-selected="true"]::before { opacity: 1; }
 nav.tabs button:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 main { display: grid; gap: 22px; padding-top: 24px; }
 section.view { display: grid; gap: 20px; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 20px; display: grid; gap: 14px; min-width: 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; display: grid; gap: 14px; min-width: 0; }
 .muted { color: var(--muted); }
 .small { font-size: 15px; }
 .label { font-family: var(--font-body); font-size: 12px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); font-weight: 400; }
 .mono, .num { font-family: var(--font-mono); font-variant-numeric: lining-nums tabular-nums; }
-.banner { padding: 12px 16px; border-left: 2px solid var(--accent); background: var(--surface); color: var(--fg); font-size: 16px; font-style: italic; }
+.banner { padding: 12px 16px; border-radius: 12px; background: var(--ochre-soft); color: var(--fg); font-size: 16px; font-style: italic; }
 .banner a { color: var(--accent); }
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0; border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
-.stat { background: transparent; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 14px 16px; display: grid; gap: 4px; align-content: start; }
-.card .stats { background: transparent; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.stat { --c: var(--accent); --cs: var(--surface); background: var(--cs); border-radius: 14px; padding: 14px 16px; display: grid; gap: 4px; align-content: start; }
+.stat .label { display: flex; align-items: center; gap: 7px; color: var(--fg-2); }
+.stat .label::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+.stat .meter { background: rgba(255,255,255,.6); }
+.stat .meter > span { background: var(--c); }
+.c-rose { --c: var(--rose); --cs: var(--rose-soft); }
+.c-sage { --c: var(--sage); --cs: var(--sage-soft); }
+.c-blue { --c: var(--blue); --cs: var(--blue-soft); }
+.c-ochre { --c: var(--ochre); --cs: var(--ochre-soft); }
+.c-plum { --c: var(--plum); --cs: var(--plum-soft); }
+.c-teal { --c: var(--teal); --cs: var(--teal-soft); }
 .stat .v { font: 300 38px/1.05 var(--font-display); font-variant-numeric: lining-nums tabular-nums; color: var(--fg); }
 .stat .v small { font: italic 400 16px var(--font-display); color: var(--muted); }
 .meter { height: 3px; background: var(--accent-soft); border-radius: 0; overflow: hidden; margin-top: 6px; }
 .meter > span { display: block; height: 100%; background: var(--accent); }
-.meter.ok > span { background: var(--good); }
+.stat .meter.ok > span, .meter.ok > span { background: var(--good); }
 /* plano */
 .days { display: flex; gap: 8px; flex-wrap: wrap; }
 .days button { border: 1px solid var(--line); background: var(--surface); color: var(--fg-2); border-radius: 999px; padding: 6px 18px; font: 400 18px var(--font-display); cursor: pointer; }
-.days button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); font-style: italic; }
+.days button::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c); margin-right: 8px; vertical-align: middle; }
+.days button[aria-pressed="true"] { background: var(--cs); color: var(--fg); border-color: var(--c); font-style: italic; box-shadow: inset 0 0 0 1px var(--c); }
 .ex { display: grid; grid-template-columns: 30px 1fr auto; gap: 2px 12px; align-items: baseline; padding: 12px 0; border-top: 1px solid var(--line); }
 .ex:first-of-type { border-top: 0; }
-.ex .n { font: italic 300 24px var(--font-display); color: var(--accent); }
+.ex .n { font: italic 400 24px var(--font-display); color: var(--c, var(--accent)); }
+.chip { display: inline-flex; align-items: center; gap: 6px; background: var(--cs); color: var(--fg); border-radius: 999px; padding: 1px 10px; font-size: 13px; margin-right: 4px; }
+.chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
 .ex .name { font: 500 21px/1.2 var(--font-display); }
 .ex .scheme { font: 400 21px var(--font-display); font-variant-numeric: lining-nums; text-align: right; white-space: nowrap; color: var(--fg); }
 .ex .meta { grid-column: 2 / 4; font-size: 15px; color: var(--muted); }
 .phase { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .phase span { height: 3px; background: var(--surface-2); }
-.phase span.on { background: var(--accent); }
-.phase span.done { background: var(--fg-2); opacity: .45; }
+.phase span:nth-child(1) { --c: var(--blue); } .phase span:nth-child(2) { --c: var(--ochre); } .phase span:nth-child(3) { --c: var(--rose); }
+.phase span { height: 5px; border-radius: 3px; }
+.phase span.on { background: var(--c); }
+.phase span.done { background: var(--c); opacity: .35; }
+.card.tint { background: var(--sage-soft); border-color: transparent; }
+.card.tint .phase span:not(.on):not(.done) { background: rgba(255,255,255,.65); }
 /* forms */
 form { display: grid; gap: 14px; }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
@@ -128,19 +153,19 @@ td.num { font-size: 19px; }
 .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
 .chart text { fill: var(--muted); font: 12px var(--font-display); font-variant-numeric: lining-nums; }
 .chart .grid { stroke: var(--line); stroke-width: 1; }
-.chart .bar { fill: var(--accent); }
-.chart .bar.ok { fill: var(--good); }
+.chart .bar { fill: var(--rose); }
+.chart .bar.ok { fill: var(--sage); }
 .chart .target { stroke: var(--fg); stroke-width: 1.5; }
-.chart .wline { stroke: var(--accent); stroke-width: 2; fill: none; stroke-linejoin: round; stroke-linecap: round; }
-.chart .wdot { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
-.chart .goal { stroke: var(--good); stroke-width: 1.5; }
+.chart .wline { stroke: var(--blue); stroke-width: 2; fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.chart .wdot { fill: var(--blue); stroke: var(--surface); stroke-width: 2; }
+.chart .goal { stroke: var(--sage); stroke-width: 1.5; }
 .chart .hit { fill: transparent; cursor: pointer; }
 .tip { position: absolute; pointer-events: none; background: var(--fg); color: var(--bg); font: italic 15px var(--font-display); padding: 5px 10px; border-radius: 3px; white-space: nowrap; transform: translate(-50%, -115%); }
 .key { display: flex; gap: 16px; flex-wrap: wrap; font-size: 15px; font-style: italic; color: var(--fg-2); }
 .key i { display: inline-block; width: 16px; height: 1.5px; background: var(--fg); vertical-align: middle; margin-right: 6px; }
-.key i.sw { height: 10px; width: 10px; border-radius: 2px; background: var(--accent); }
-.key i.sw.ok { background: var(--good); }
-@media (max-width: 420px) { h1 { font-size: 34px; } .stat .v { font-size: 32px; } .msg { grid-template-columns: 1fr; gap: 4px; } }
+.key i.sw { height: 10px; width: 10px; border-radius: 2px; background: var(--rose); }
+.key i.sw.ok { background: var(--sage); }
+@media (max-width: 420px) { nav.tabs button { font-size: 16px; padding-inline: 2px; } nav.tabs button:not([aria-selected="true"])::before { display: none; } h1 { font-size: 34px; } .stat .v { font-size: 32px; } .msg { grid-template-columns: 1fr; gap: 4px; } }
 @media (prefers-reduced-motion: no-preference) { .meter > span { transition: width .5s ease; } }
 </style>
 
@@ -151,11 +176,11 @@ td.num { font-size: 19px; }
       <span class="block-tag" id="blockTag">—</span>
     </div>
     <nav class="tabs" role="tablist">
-      <button role="tab" id="tab-treino" data-view="treino" aria-selected="true">Treino</button>
-      <button role="tab" id="tab-registrar" data-view="registrar" aria-selected="false">Registrar</button>
-      <button role="tab" id="tab-progresso" data-view="progresso" aria-selected="false">Progresso</button>
-      <button role="tab" id="tab-ajustes" data-view="ajustes" aria-selected="false">Ajustes</button>
-      <button role="tab" id="tab-perfil" data-view="perfil" aria-selected="false">Perfil</button>
+      <button role="tab" id="tab-treino" data-view="treino" style="--c:var(--blue)" aria-selected="true">Treino</button>
+      <button role="tab" id="tab-registrar" data-view="registrar" style="--c:var(--rose)" aria-selected="false">Registrar</button>
+      <button role="tab" id="tab-progresso" data-view="progresso" style="--c:var(--sage)" aria-selected="false">Progresso</button>
+      <button role="tab" id="tab-ajustes" data-view="ajustes" style="--c:var(--ochre)" aria-selected="false">Ajustes</button>
+      <button role="tab" id="tab-perfil" data-view="perfil" style="--c:var(--plum)" aria-selected="false">Perfil</button>
     </nav>
   </header>
 
@@ -166,7 +191,7 @@ td.num { font-size: 19px; }
     <!-- TREINO -->
     <section class="view" id="view-treino">
       <div class="stats" id="weekStats"></div>
-      <div class="card">
+      <div class="card tint">
         <div class="weekhead">
           <div>
             <div class="label" id="phaseLabel">Bloco</div>
@@ -361,6 +386,8 @@ const LIB = {
     {n:"Prancha lateral", eq:"Colchonete", t:1}
   ]
 };
+const GROUP_C = {peito:"rose", costas:"blue", ombros:"ochre", biceps:"plum", triceps:"plum", quadriceps:"sage", posterior:"teal", gluteos:"rose", panturrilha:"sage", core:"ochre"};
+const DAY_C = ["blue","rose","sage","ochre","plum","teal"];
 const GROUP_PT = {peito:"Peito", costas:"Costas", ombros:"Ombros", biceps:"Bíceps", triceps:"Tríceps", quadriceps:"Quadríceps", posterior:"Posterior", gluteos:"Glúteos", panturrilha:"Panturrilha", core:"Core"};
 
 /* ============ DIVISÕES ============ */
@@ -625,11 +652,11 @@ function renderTreino({ p, ev, plan }) {
   const kcal = L.reduce((a,l)=>a+l.kcal,0), min = L.reduce((a,l)=>a+l.min,0);
   const pct = Math.min(100, Math.round(kcal / target * 100));
   $("weekStats").innerHTML = `
-    <div class="stat"><span class="label">Kcal da semana</span><span class="v num">${nf(kcal)} <small>/ ${nf(target)}</small></span><div class="meter ${pct>=100?"ok":""}"><span style="width:${pct}%"></span></div></div>
-    <div class="stat"><span class="label">Musculação</span><span class="v num">${G.length} <small>/ ${p.days}</small></span><div class="meter ${G.length>=p.days?"ok":""}"><span style="width:${Math.min(100, G.length/p.days*100)}%"></span></div></div>
-    ${p.pilates ? `<div class="stat"><span class="label">Pilates</span><span class="v num">${pil} <small>/ ${p.pilates}</small></span><div class="meter ${pil>=p.pilates?"ok":""}"><span style="width:${Math.min(100, pil/p.pilates*100)}%"></span></div></div>` : ""}
-    <div class="stat"><span class="label">Minutos</span><span class="v num">${nf(min)} <small>/ ${p.days*p.dur + (p.pilates||0)*50}</small></span><div class="meter ${min>=p.days*p.dur+(p.pilates||0)*50?"ok":""}"><span style="width:${Math.min(100, min/(p.days*p.dur+(p.pilates||0)*50)*100)}%"></span></div></div>
-    <div class="stat"><span class="label">Meta por treino</span><span class="v num">${nf(target/(p.days + (p.pilates||0)))} <small>kcal</small></span><span class="small muted">${p.pilates ? "por sessão, academia ou pilates" : `em cerca de ${p.dur} min`}</span></div>`;
+    <div class="stat c-rose"><span class="label">Kcal da semana</span><span class="v num">${nf(kcal)} <small>/ ${nf(target)}</small></span><div class="meter ${pct>=100?"ok":""}"><span style="width:${pct}%"></span></div></div>
+    <div class="stat c-blue"><span class="label">Musculação</span><span class="v num">${G.length} <small>/ ${p.days}</small></span><div class="meter ${G.length>=p.days?"ok":""}"><span style="width:${Math.min(100, G.length/p.days*100)}%"></span></div></div>
+    ${p.pilates ? `<div class="stat c-plum"><span class="label">Pilates</span><span class="v num">${pil} <small>/ ${p.pilates}</small></span><div class="meter ${pil>=p.pilates?"ok":""}"><span style="width:${Math.min(100, pil/p.pilates*100)}%"></span></div></div>` : ""}
+    <div class="stat c-sage"><span class="label">Minutos</span><span class="v num">${nf(min)} <small>/ ${p.days*p.dur + (p.pilates||0)*50}</small></span><div class="meter ${min>=p.days*p.dur+(p.pilates||0)*50?"ok":""}"><span style="width:${Math.min(100, min/(p.days*p.dur+(p.pilates||0)*50)*100)}%"></span></div></div>
+    <div class="stat c-ochre"><span class="label">Meta por treino</span><span class="v num">${nf(target/(p.days + (p.pilates||0)))} <small>kcal</small></span><span class="small muted">${p.pilates ? "por sessão, academia ou pilates" : `em cerca de ${p.dur} min`}</span></div>`;
   $("phaseLabel").textContent = `Bloco ${plan.block+1} · troca a cada 3 semanas`;
   $("phaseTitle").textContent = `${plan.scheme.name}: ${plan.scheme.s}×${plan.scheme.r}`;
   const start = mondayOf(parse(p.start));
@@ -639,17 +666,17 @@ function renderTreino({ p, ev, plan }) {
   [...$("phaseBar").children].forEach((s, i) => s.className = i < plan.wib ? "done" : i === plan.wib ? "on" : "");
   $("phaseNote").textContent = plan.note + (ev.reached ? " Você atingiu seu peso meta. Considere mudar o objetivo no perfil." : "");
   if (ui.day >= plan.days.length) ui.day = 0;
-  $("dayPicker").innerHTML = plan.days.map((d, i) => `<button type="button" data-day="${i}" aria-pressed="${i===ui.day}">Treino ${String.fromCharCode(65+i)}</button>`).join("");
+  $("dayPicker").innerHTML = plan.days.map((d, i) => `<button type="button" class="c-${DAY_C[i % DAY_C.length]}" data-day="${i}" aria-pressed="${i===ui.day}">Treino ${String.fromCharCode(65+i)}</button>`).join("");
   const d = plan.days[ui.day];
   const cardioTxt = ev.adj.hiit ? `Intervalado: ${plan.cardioOpt.hiit}` : plan.cardioOpt.d;
   $("dayCard").innerHTML = `
     <div class="weekhead"><h3>Treino ${String.fromCharCode(65+ui.day)} · ${esc(d.name)}</h3><span class="small muted num">≈ ${8 + d.strengthMin + d.cardio} min</span></div>
     <div class="small muted">Aquecimento: 5 min de bike leve + 2 séries leves do primeiro exercício.${p.pilates ? " Abdômen e core ficam por conta do pilates." : ""}</div>
     <div>${d.exs.map((e, i) => `
-      <div class="ex"><span class="n">${i+1}</span><span class="name">${esc(e.n)}</span><span class="scheme">${e.s}×${esc(e.r)}</span>
-      <span class="meta">${GROUP_PT[e.g]} · ${esc(e.eq)} · descanso ${e.rest >= 60 ? (e.rest/60).toString().replace(".", ",") + " min" : e.rest + " s"}</span></div>`).join("")}
+      <div class="ex c-${GROUP_C[e.g]}"><span class="n">${i+1}</span><span class="name">${esc(e.n)}</span><span class="scheme">${e.s}×${esc(e.r)}</span>
+      <span class="meta"><span class="chip">${GROUP_PT[e.g]}</span>${esc(e.eq)} · descanso ${e.rest >= 60 ? (e.rest/60).toString().replace(".", ",") + " min" : e.rest + " s"}</span></div>`).join("")}
     </div>
-    ${d.cardio > 0 ? `<div class="ex" style="border-top:1px solid var(--line)"><span class="n">+</span><span class="name">Cardio: ${esc(plan.cardioOpt.n)}</span><span class="scheme">${d.cardio} min</span><span class="meta">${esc(cardioTxt)}</span></div>` : ""}
+    ${d.cardio > 0 ? `<div class="ex c-teal" style="border-top:1px solid var(--line)"><span class="n">+</span><span class="name">Cardio: ${esc(plan.cardioOpt.n)}</span><span class="scheme">${d.cardio} min</span><span class="meta">${esc(cardioTxt)}</span></div>` : ""}
     ${d.cardioExtra > 0 ? `<div class="small muted">Os ajustes pedem mais ${d.cardioExtra} min de cardio do que cabem nesta sessão. Faça esse tempo em outro dia ou em uma caminhada.</div>` : ""}`;
 }
 function renderLogForm({ plan }) {
@@ -668,10 +695,10 @@ function renderAdjust({ p, ev }) {
   const a = ev.adj;
   const sign = n => (n > 0 ? "+" : n < 0 ? "−" : "") + Math.abs(n);
   $("adjStats").innerHTML = `
-    <div class="stat"><span class="label">Cardio por treino</span><span class="v num">${Math.max(0, CARDIO_BASE[p.goal]+a.cardio)} <small>min (${sign(a.cardio)})</small></span></div>
-    <div class="stat"><span class="label">Séries extras</span><span class="v num">${sign(a.volume) || "0"} <small>por exercício</small></span></div>
-    <div class="stat"><span class="label">Meta semanal</span><span class="v num">${nf(weeklyKcalTarget(p, a))} <small>kcal (${Math.round(a.kcalFactor*100)}%)</small></span></div>
-    <div class="stat"><span class="label">Cardio</span><span class="v" style="font-size:26px">${a.hiit ? "Intervalado" : "Contínuo"}</span></div>`;
+    <div class="stat c-teal"><span class="label">Cardio por treino</span><span class="v num">${Math.max(0, CARDIO_BASE[p.goal]+a.cardio)} <small>min (${sign(a.cardio)})</small></span></div>
+    <div class="stat c-blue"><span class="label">Séries extras</span><span class="v num">${sign(a.volume) || "0"} <small>por exercício</small></span></div>
+    <div class="stat c-rose"><span class="label">Meta semanal</span><span class="v num">${nf(weeklyKcalTarget(p, a))} <small>kcal (${Math.round(a.kcalFactor*100)}%)</small></span></div>
+    <div class="stat c-ochre"><span class="label">Cardio</span><span class="v" style="font-size:26px">${a.hiit ? "Intervalado" : "Contínuo"}</span></div>`;
   const labels = {up:"Aumentou", down:"Reduziu", ok:"Mantido", bad:"Atenção"};
   if (!ev.weeks.length) { $("adjLog").innerHTML = `<div class="card"><p class="muted" style="margin:0">Os ajustes começam quando a primeira semana do programa terminar. Registre cada treino com kcal e tempo, e o peso pelo menos uma vez por semana.</p></div>`; return; }
   $("adjLog").innerHTML = ev.weeks.slice().reverse().map(w => {
@@ -699,10 +726,10 @@ function renderProgress({ p, ev }) {
     }
   } else if (!p.target) proj = "Defina um peso meta";
   $("progStats").innerHTML = `
-    <div class="stat"><span class="label">Kcal totais</span><span class="v num">${nf(totalK)}</span><span class="small muted">≈ ${(totalK/7700).toFixed(1).replace(".", ",")} kg de gordura em energia</span></div>
-    <div class="stat"><span class="label">Tempo total</span><span class="v num">${Math.floor(totalM/60)}h${String(totalM%60).padStart(2,"0")}</span><span class="small muted">${all.filter(isGym).length} treinos${all.some(isPilates) ? ` · ${all.filter(isPilates).length} pilates` : ""}</span></div>
-    <div class="stat"><span class="label">Peso</span><span class="v num">${lastW.toFixed(1).replace(".", ",")} <small>kg</small></span><span class="small muted">${p.target ? "meta " + p.target.toFixed(1).replace(".", ",") + " kg" : "sem meta"}</span></div>
-    <div class="stat"><span class="label">Previsão até a meta</span><span class="v" style="font-size:26px">${esc(proj)}</span></div>`;
+    <div class="stat c-rose"><span class="label">Kcal totais</span><span class="v num">${nf(totalK)}</span><span class="small muted">≈ ${(totalK/7700).toFixed(1).replace(".", ",")} kg de gordura em energia</span></div>
+    <div class="stat c-sage"><span class="label">Tempo total</span><span class="v num">${Math.floor(totalM/60)}h${String(totalM%60).padStart(2,"0")}</span><span class="small muted">${all.filter(isGym).length} treinos${all.some(isPilates) ? ` · ${all.filter(isPilates).length} pilates` : ""}</span></div>
+    <div class="stat c-blue"><span class="label">Peso</span><span class="v num">${lastW.toFixed(1).replace(".", ",")} <small>kg</small></span><span class="small muted">${p.target ? "meta " + p.target.toFixed(1).replace(".", ",") + " kg" : "sem meta"}</span></div>
+    <div class="stat c-plum"><span class="label">Previsão até a meta</span><span class="v" style="font-size:26px">${esc(proj)}</span></div>`;
   // gráfico kcal semanal (últimas 8 semanas)
   const weeksN = 8, cw = ev.curWeek;
   const from = Math.max(0, cw - weeksN + 1);
@@ -722,9 +749,9 @@ function renderProgress({ p, ev }) {
   const prot = { emagrecer:1.8, definicao:2.0, hipertrofia:1.8, forca:1.8, condicionamento:1.4 }[p.goal];
   $("nutriCard").innerHTML = `<h3>Referência de alimentação</h3>
     <div class="stats">
-      <div class="stat"><span class="label">Gasto diário estimado</span><span class="v num">${nf(tdee)} <small>kcal</small></span></div>
-      <div class="stat"><span class="label">Consumo sugerido</span><span class="v num">${nf(tdee + delta)} <small>kcal/dia</small></span></div>
-      <div class="stat"><span class="label">Proteína</span><span class="v num">${nf(prot * lastW)} <small>g/dia</small></span></div>
+      <div class="stat c-ochre"><span class="label">Gasto diário estimado</span><span class="v num">${nf(tdee)} <small>kcal</small></span></div>
+      <div class="stat c-sage"><span class="label">Consumo sugerido</span><span class="v num">${nf(tdee + delta)} <small>kcal/dia</small></span></div>
+      <div class="stat c-rose"><span class="label">Proteína</span><span class="v num">${nf(prot * lastW)} <small>g/dia</small></span></div>
     </div>
     <p class="small muted" style="margin:0">Estimativa pela fórmula de Mifflin-St Jeor. Treino sozinho raramente fecha o déficit ou superávit; para um plano alimentar, procure um nutricionista.</p>`;
 }
