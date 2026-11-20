@@ -237,6 +237,7 @@ td.num { font-size: 19px; }
             <div class="field"><label for="pDays">Dias por semana</label><select id="pDays"><option>3</option><option>4</option><option>5</option><option>6</option></select></div>
             <div class="field"><label for="pDur">Duração do treino (min)</label><select id="pDur"><option>45</option><option>60</option><option>75</option><option>90</option></select></div>
             <div class="field"><label for="pFocus">Foco extra</label><select id="pFocus"><option value="equilibrado">Equilibrado</option><option value="inferiores">Pernas e glúteos</option><option value="superiores">Tronco e braços</option></select></div>
+            <div class="field"><label for="pPilates">Pilates por semana</label><select id="pPilates"><option value="0">Não faço</option><option value="1">1 aula</option><option value="2">2 aulas</option><option value="3">3 aulas</option><option value="4">4 aulas</option></select></div>
             <div class="field"><label for="pStart">Início do programa</label><input type="date" id="pStart" required></div>
           </div>
           <div class="row"><button class="btn" type="submit">Salvar e gerar plano</button><span class="toast" id="profToast" role="status"></span></div>
@@ -395,12 +396,14 @@ const today = () => { const d = new Date(); return new Date(d.getFullYear(), d.g
 const weekIndexOf = (p, dateStr) => Math.floor(daysBetween(mondayOf(parse(p.start)), parse(dateStr)) / 7);
 
 /* ============ ESTADO ============ */
-const DEFAULT_PROFILE = () => ({goal:"emagrecer", sex:"f", age:30, weight:70, height:165, target:63, level:"intermediario", days:4, dur:60, focus:"equilibrado", start:iso(mondayOf(today()))});
+const DEFAULT_PROFILE = () => ({goal:"emagrecer", sex:"f", age:30, weight:70, height:165, target:63, level:"intermediario", days:4, dur:60, focus:"equilibrado", pilates:0, start:iso(mondayOf(today()))});
 let state = { profile: null, logs: [] };
 let ui = { view: "treino", day: 0 };
 
 /* ============ MOTOR DE AJUSTES ============ */
 // Recalcula do zero a partir de todos os registros: cada semana encerrada gera ajustes que se acumulam.
+const isGym = l => /^[A-F]$/.test(l.day);
+const isPilates = l => l.day === "pilates";
 function bmr(p) { return 10*p.weight + 6.25*p.height - 5*p.age + (p.sex === "m" ? 5 : -161); }
 function evaluate(p, logs) {
   const adj = { cardio: 0, volume: 0, kcalFactor: 1, hiit: false };
@@ -414,16 +417,22 @@ function evaluate(p, logs) {
     const L = byWeek[w] || [];
     const target = weeklyKcalTarget(p, adj);
     const kcal = L.reduce((a,l)=>a+l.kcal,0), min = L.reduce((a,l)=>a+l.min,0);
-    const sessions = L.length;
+    const G = L.filter(isGym), pil = L.filter(isPilates).length;
+    const sessions = G.length;
     const wts = L.filter(l=>l.weight).map(l=>l.weight);
     const avgW = wts.length ? wts.reduce((a,b)=>a+b,0)/wts.length : null;
-    const rpe = sessions ? L.reduce((a,l)=>a+(l.rpe||7),0)/sessions : null;
+    const rpe = sessions ? G.reduce((a,l)=>a+(l.rpe||7),0)/sessions : null;
     const msgs = [];
-    const rec = { w, kcal, min, sessions, target, avgW, rpe, msgs };
-    if (!sessions) { msgs.push({k:"bad", t:"Semana sem registros. Nenhum ajuste aplicado; retome o plano atual."}); weeks.push(rec); continue; }
+    const rec = { w, kcal, min, sessions, pil, target, avgW, rpe, msgs };
+    if (!L.length) { msgs.push({k:"bad", t:"Semana sem registros. Nenhum ajuste aplicado; retome o plano atual."}); weeks.push(rec); continue; }
     const ratio = kcal / target, adherence = sessions / p.days, kpm = min ? kcal/min : 0;
     const lossGoal = p.goal === "emagrecer" || p.goal === "definicao" || p.goal === "condicionamento";
     // 1) aderência
+    if (p.pilates) {
+      const pk = L.filter(isPilates).reduce((a,l)=>a+l.kcal,0);
+      if (pil >= p.pilates) msgs.push({k:"ok", t:`Pilates: ${pil} de ${p.pilates} aula${p.pilates>1?"s":""}${pk ? `, ${nf(pk)} kcal somadas à meta` : ""}.`});
+      else msgs.push({k:"bad", t:`Pilates: ${pil} de ${p.pilates} aula${p.pilates>1?"s":""}. O gasto que faltou pesa na meta de kcal da semana.`});
+    }
     if (adherence < .6) msgs.push({k:"bad", t:`Você treinou ${sessions} de ${p.days} dias. Antes de aumentar a carga, priorize a frequência.`});
     // 2) gasto calórico
     if (lossGoal && ratio < .8) { adj.cardio += 5; msgs.push({k:"up", t:`Gasto de ${Math.round(ratio*100)}% da meta. +5 min de cardio por treino.`}); }
@@ -486,6 +495,7 @@ function buildPlan(p, adj, weekIdx) {
     let slots = DAYS[k].slots.slice();
     if (p.focus === "inferiores" && ["FA","FB","FC","LEGS","LOW"].includes(k)) slots.splice(2, 0, "gluteos");
     if (p.focus === "superiores" && ["FA","FB","FC","PUSH","PULL","UP"].includes(k)) slots.splice(2, 0, k==="PULL"?"costas":"ombros");
+    if (p.pilates > 0 && slots.filter(g => g !== "core").length >= 5) slots = slots.filter(g => g !== "core");
     const used = {};
     let exs = slots.map((g, si) => {
       const list = LIB[g];
@@ -594,14 +604,16 @@ function render() {
 function weekLogs(p, w) { return state.logs.filter(l => weekIndexOf(p, l.date) === w); }
 function renderTreino({ p, ev, plan }) {
   const L = weekLogs(p, ev.curWeek);
+  const G = L.filter(isGym), pil = L.filter(isPilates).length;
   const target = weeklyKcalTarget(p, ev.adj);
   const kcal = L.reduce((a,l)=>a+l.kcal,0), min = L.reduce((a,l)=>a+l.min,0);
   const pct = Math.min(100, Math.round(kcal / target * 100));
   $("weekStats").innerHTML = `
     <div class="stat"><span class="label">Kcal da semana</span><span class="v num">${nf(kcal)} <small>/ ${nf(target)}</small></span><div class="meter ${pct>=100?"ok":""}"><span style="width:${pct}%"></span></div></div>
-    <div class="stat"><span class="label">Treinos</span><span class="v num">${L.length} <small>/ ${p.days}</small></span><div class="meter ${L.length>=p.days?"ok":""}"><span style="width:${Math.min(100, L.length/p.days*100)}%"></span></div></div>
-    <div class="stat"><span class="label">Minutos</span><span class="v num">${nf(min)} <small>/ ${p.days*p.dur}</small></span><div class="meter ${min>=p.days*p.dur?"ok":""}"><span style="width:${Math.min(100, min/(p.days*p.dur)*100)}%"></span></div></div>
-    <div class="stat"><span class="label">Meta por treino</span><span class="v num">${nf(target/p.days)} <small>kcal</small></span><span class="small muted">em cerca de ${p.dur} min</span></div>`;
+    <div class="stat"><span class="label">Musculação</span><span class="v num">${G.length} <small>/ ${p.days}</small></span><div class="meter ${G.length>=p.days?"ok":""}"><span style="width:${Math.min(100, G.length/p.days*100)}%"></span></div></div>
+    ${p.pilates ? `<div class="stat"><span class="label">Pilates</span><span class="v num">${pil} <small>/ ${p.pilates}</small></span><div class="meter ${pil>=p.pilates?"ok":""}"><span style="width:${Math.min(100, pil/p.pilates*100)}%"></span></div></div>` : ""}
+    <div class="stat"><span class="label">Minutos</span><span class="v num">${nf(min)} <small>/ ${p.days*p.dur + (p.pilates||0)*50}</small></span><div class="meter ${min>=p.days*p.dur+(p.pilates||0)*50?"ok":""}"><span style="width:${Math.min(100, min/(p.days*p.dur+(p.pilates||0)*50)*100)}%"></span></div></div>
+    <div class="stat"><span class="label">Meta por treino</span><span class="v num">${nf(target/(p.days + (p.pilates||0)))} <small>kcal</small></span><span class="small muted">${p.pilates ? "por sessão, academia ou pilates" : `em cerca de ${p.dur} min`}</span></div>`;
   $("phaseLabel").textContent = `Bloco ${plan.block+1} · troca a cada 3 semanas`;
   $("phaseTitle").textContent = `${plan.scheme.name}: ${plan.scheme.s}×${plan.scheme.r}`;
   const start = mondayOf(parse(p.start));
@@ -616,7 +628,7 @@ function renderTreino({ p, ev, plan }) {
   const cardioTxt = ev.adj.hiit ? `Intervalado: ${plan.cardioOpt.hiit}` : plan.cardioOpt.d;
   $("dayCard").innerHTML = `
     <div class="weekhead"><h3>Treino ${String.fromCharCode(65+ui.day)} · ${esc(d.name)}</h3><span class="small muted num">≈ ${8 + d.strengthMin + d.cardio} min</span></div>
-    <div class="small muted">Aquecimento: 5 min de bike leve + 2 séries leves do primeiro exercício.</div>
+    <div class="small muted">Aquecimento: 5 min de bike leve + 2 séries leves do primeiro exercício.${p.pilates ? " Abdômen e core ficam por conta do pilates." : ""}</div>
     <div>${d.exs.map((e, i) => `
       <div class="ex"><span class="n">${i+1}</span><span class="name">${esc(e.n)}</span><span class="scheme">${e.s}×${esc(e.r)}</span>
       <span class="meta">${GROUP_PT[e.g]} · ${esc(e.eq)} · descanso ${e.rest >= 60 ? (e.rest/60).toString().replace(".", ",") + " min" : e.rest + " s"}</span></div>`).join("")}
@@ -626,7 +638,7 @@ function renderTreino({ p, ev, plan }) {
 }
 function renderLogForm({ plan }) {
   const sel = $("lDay"), cur = sel.value;
-  sel.innerHTML = plan.days.map((d, i) => `<option value="${String.fromCharCode(65+i)}">Treino ${String.fromCharCode(65+i)} · ${esc(d.name)}</option>`).join("") + `<option value="cardio">Só cardio</option><option value="outro">Outra atividade</option>`;
+  sel.innerHTML = plan.days.map((d, i) => `<option value="${String.fromCharCode(65+i)}">Treino ${String.fromCharCode(65+i)} · ${esc(d.name)}</option>`).join("") + `<option value="pilates">Pilates</option><option value="cardio">Só cardio</option><option value="outro">Outra atividade</option>`;
   if (cur) sel.value = cur; else sel.value = String.fromCharCode(65 + ui.day);
   if (!$("lDate").value) $("lDate").value = iso(today());
 }
@@ -634,7 +646,7 @@ function renderHistory() {
   const rows = [...state.logs].sort((a,b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
   if (!rows.length) { $("histTable").innerHTML = `<tr><td class="muted">Nenhum treino registrado ainda. Use o formulário acima depois de cada treino.</td></tr>`; return; }
   $("histTable").innerHTML = `<thead><tr><th>Data</th><th>Treino</th><th class="num">Kcal</th><th class="num">Min</th><th class="num">kcal/min</th><th class="num">Esforço</th><th class="num">Peso</th><th></th></tr></thead><tbody>` +
-    rows.map(l => `<tr><td class="num">${fmtDate(l.date)}</td><td>${esc(l.day === "cardio" ? "Cardio" : l.day === "outro" ? "Outro" : "Treino " + l.day)}${l.note ? `<div class="small muted">${esc(l.note)}</div>` : ""}</td><td class="num">${nf(l.kcal)}</td><td class="num">${l.min}</td><td class="num">${(l.kcal/l.min).toFixed(1).replace(".", ",")}</td><td class="num">${l.rpe}</td><td class="num">${l.weight ? l.weight.toFixed(1).replace(".", ",") : "—"}</td><td><button class="btn danger" type="button" data-del="${esc(l.id)}">Excluir</button></td></tr>`).join("") + `</tbody>`;
+    rows.map(l => `<tr><td class="num">${fmtDate(l.date)}</td><td>${esc(l.day === "pilates" ? "Pilates" : l.day === "cardio" ? "Cardio" : l.day === "outro" ? "Outro" : "Treino " + l.day)}${l.note ? `<div class="small muted">${esc(l.note)}</div>` : ""}</td><td class="num">${nf(l.kcal)}</td><td class="num">${l.min}</td><td class="num">${(l.kcal/l.min).toFixed(1).replace(".", ",")}</td><td class="num">${l.rpe}</td><td class="num">${l.weight ? l.weight.toFixed(1).replace(".", ",") : "—"}</td><td><button class="btn danger" type="button" data-del="${esc(l.id)}">Excluir</button></td></tr>`).join("") + `</tbody>`;
 }
 function renderAdjust({ p, ev }) {
   const a = ev.adj;
@@ -648,7 +660,7 @@ function renderAdjust({ p, ev }) {
   if (!ev.weeks.length) { $("adjLog").innerHTML = `<div class="card"><p class="muted" style="margin:0">Os ajustes começam quando a primeira semana do programa terminar. Registre cada treino com kcal e tempo, e o peso pelo menos uma vez por semana.</p></div>`; return; }
   $("adjLog").innerHTML = ev.weeks.slice().reverse().map(w => {
     const start = new Date(mondayOf(parse(p.start)).getTime() + w.w*7*DAY_MS);
-    return `<div class="card"><div class="weekhead"><h3>Semana ${w.w+1} · bloco ${Math.floor(w.w/3)+1}</h3><span class="small muted num">${start.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})} · ${nf(w.kcal)}/${nf(w.target)} kcal · ${w.sessions} treinos</span></div>
+    return `<div class="card"><div class="weekhead"><h3>Semana ${w.w+1} · bloco ${Math.floor(w.w/3)+1}</h3><span class="small muted num">${start.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})} · ${nf(w.kcal)}/${nf(w.target)} kcal · ${w.sessions} treinos${w.pil ? ` + ${w.pil} pilates` : ""}</span></div>
       ${w.msgs.map(m => `<div class="msg"><span class="pill ${m.k}">${labels[m.k]}</span><span>${esc(m.t)}</span></div>`).join("")}</div>`;
   }).join("");
 }
@@ -672,7 +684,7 @@ function renderProgress({ p, ev }) {
   } else if (!p.target) proj = "Defina um peso meta";
   $("progStats").innerHTML = `
     <div class="stat"><span class="label">Kcal totais</span><span class="v num">${nf(totalK)}</span><span class="small muted">≈ ${(totalK/7700).toFixed(1).replace(".", ",")} kg de gordura em energia</span></div>
-    <div class="stat"><span class="label">Tempo total</span><span class="v num">${Math.floor(totalM/60)}h${String(totalM%60).padStart(2,"0")}</span><span class="small muted">${all.length} treinos</span></div>
+    <div class="stat"><span class="label">Tempo total</span><span class="v num">${Math.floor(totalM/60)}h${String(totalM%60).padStart(2,"0")}</span><span class="small muted">${all.filter(isGym).length} treinos${all.some(isPilates) ? ` · ${all.filter(isPilates).length} pilates` : ""}</span></div>
     <div class="stat"><span class="label">Peso</span><span class="v num">${lastW.toFixed(1).replace(".", ",")} <small>kg</small></span><span class="small muted">${p.target ? "meta " + p.target.toFixed(1).replace(".", ",") + " kg" : "sem meta"}</span></div>
     <div class="stat"><span class="label">Previsão até a meta</span><span class="v" style="font-size:26px">${esc(proj)}</span></div>`;
   // gráfico kcal semanal (últimas 8 semanas)
@@ -687,7 +699,8 @@ function renderProgress({ p, ev }) {
   barChart($("kcalChart"), data);
   lineChart($("weightChart"), wts.map(l => ({ date: l.date, v: l.weight })), p.target, p.weight, p.start);
   // nutrição
-  const af = p.days <= 3 ? 1.375 : p.days <= 5 ? 1.55 : 1.725;
+  const act = p.days + (p.pilates || 0) * 0.5;
+  const af = act <= 3 ? 1.375 : act <= 5 ? 1.55 : 1.725;
   const tdee = bmr({ ...p, weight: lastW }) * af;
   const delta = { emagrecer:-450, definicao:-250, hipertrofia:250, forca:150, condicionamento:0 }[p.goal];
   const prot = { emagrecer:1.8, definicao:2.0, hipertrofia:1.8, forca:1.8, condicionamento:1.4 }[p.goal];
@@ -778,12 +791,12 @@ $("histTable").addEventListener("click", async e => {
 function fillProfile() {
   const p = state.profile || DEFAULT_PROFILE();
   $("pGoal").value = p.goal; $("pSex").value = p.sex; $("pAge").value = p.age; $("pWeight").value = p.weight; $("pHeight").value = p.height;
-  $("pTarget").value = p.target || ""; $("pLevel").value = p.level; $("pDays").value = p.days; $("pDur").value = p.dur; $("pFocus").value = p.focus; $("pStart").value = p.start;
+  $("pTarget").value = p.target || ""; $("pLevel").value = p.level; $("pDays").value = p.days; $("pDur").value = p.dur; $("pFocus").value = p.focus; $("pPilates").value = p.pilates || 0; $("pStart").value = p.start;
 }
 $("profileForm").addEventListener("submit", async e => {
   e.preventDefault();
   const t = parseFloat($("pTarget").value);
-  state.profile = { goal: $("pGoal").value, sex: $("pSex").value, age: +$("pAge").value, weight: +$("pWeight").value, height: +$("pHeight").value, target: t > 0 ? t : null, level: $("pLevel").value, days: +$("pDays").value, dur: +$("pDur").value, focus: $("pFocus").value, start: $("pStart").value };
+  state.profile = { goal: $("pGoal").value, sex: $("pSex").value, age: +$("pAge").value, weight: +$("pWeight").value, height: +$("pHeight").value, target: t > 0 ? t : null, level: $("pLevel").value, days: +$("pDays").value, dur: +$("pDur").value, focus: $("pFocus").value, pilates: +$("pPilates").value, start: $("pStart").value };
   render(); await persist();
   $("profToast").textContent = "Perfil salvo. Plano gerado.";
   setTimeout(() => { $("profToast").textContent = ""; go("treino"); }, 900);

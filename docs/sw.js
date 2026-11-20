@@ -1,5 +1,5 @@
 // Funciona offline: guarda o app e as fontes no aparelho.
-const VERSION = "v1795178434";
+const VERSION = "v1795187794";
 const CACHE = "treino-" + VERSION;
 const CORE = ["./", "index.html", "manifest.webmanifest", "icons/icon-192-v2.png", "icons/icon-512-v2.png", "icons/apple-touch-icon-v2.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
